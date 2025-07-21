@@ -1277,7 +1277,6 @@ int unregister_vmap_purge_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(unregister_vmap_purge_notifier);
 
-bool lazy_vunmap_enable  __read_mostly = true;
 /*
  * lazy_max_pages is the maximum amount of virtual address space we gather up
  * before attempting to purge with a TLB flush.
@@ -1297,9 +1296,6 @@ bool lazy_vunmap_enable  __read_mostly = true;
 static unsigned long lazy_max_pages(void)
 {
 	unsigned int log;
-
-	if (!lazy_vunmap_enable)
-		return 0;
 
 	log = fls(num_online_cpus());
 
@@ -2463,10 +2459,6 @@ void *vmap_pfn(unsigned long *pfns, unsigned int count, pgprot_t prot)
 		free_vm_area(area);
 		return NULL;
 	}
-
-	flush_cache_vmap((unsigned long)area->addr,
-			 (unsigned long)area->addr + count * PAGE_SIZE);
-
 	return area->addr;
 }
 EXPORT_SYMBOL_GPL(vmap_pfn);

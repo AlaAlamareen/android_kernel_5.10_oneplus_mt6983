@@ -2464,9 +2464,9 @@ static kal_uint32 get_default_framerate_by_scenario(struct subdrv_ctx *ctx,
     return ERROR_NONE;
 }
 
-static INT32 get_sensor_temperature(struct subdrv_ctx *ctx)
+static kal_uint32 get_sensor_temperature(struct subdrv_ctx *ctx)
 {
-    UINT8 temperature = 0;
+    INT8 temperature = 0;
     INT32 temperature_convert = 0;
 
     temperature = read_cmos_sensor_8(ctx, 0x013a);

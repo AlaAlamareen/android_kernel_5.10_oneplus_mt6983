@@ -56,10 +56,6 @@ source "drivers/soc/oplus/hans/Kconfig"
 source "kernel/oplus_cpu/oplus_omrg/Kconfig"
 #endif /* OPLUS_FEATURE_OMRG */
 
-#ifdef OPLUS_FEATURE_FREQQOS_MONITOR
-source "kernel/oplus_cpu/freqqos_monitor/Kconfig"
-#endif /* OPLUS_FEATURE_FREQQOS_MONITOR */
-
 #ifdef OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING
 source "kernel/oplus_cpu/cpufreq_bouncing/Kconfig"
 #endif /* OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING */
@@ -68,17 +64,8 @@ source "kernel/oplus_cpu/cpufreq_bouncing/Kconfig"
 source "kernel/oplus_cpu/oplus_overload/Kconfig"
 #endif /* OPLUS_FEATURE_ABNORMAL_FLAG*/
 
-source "drivers/soc/oplus/uad/Kconfig"
 #ifdef OPLUS_FEATURE_MM_FEEDBACK
 source "drivers/soc/oplus/oplus_mm_fb/Kconfig"
 #endif /* OPLUS_FEATURE_MM_FEEDBACK */
-
-#ifdef OPLUS_FEATURE_STORAGE_IO_METRICS
-source "drivers/soc/oplus/storage/Kconfig"
-#endif /*OPLUS_FEATURE_STORAGE_IO_METRICS*/
-
-#ifdef OPLUS_FEATURE_WAKER_IDENTIFY
-source "kernel/oplus_cpu/waker_identify/Kconfig"
-#endif /*OPLUS_FEATURE_WAKER_IDENTIFY*/
 
 endmenu

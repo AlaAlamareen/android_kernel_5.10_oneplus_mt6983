@@ -136,9 +136,9 @@
 	qcom,temp_cold_fastchg_current_ma = <200>;
 
 	qcom,freeze_bat_decidegc = <100>;  /*-10C~0C*/
-	qcom,temp_freeze_fastchg_current_ma_high = <850>;
-	qcom,temp_freeze_fastchg_current_ma_low = <300>;
-	qcom,temp_freeze_fastchg_current_ma = <300>;
+	qcom,temp_freeze_fastchg_current_ma_high = <300>;
+	qcom,temp_freeze_fastchg_current_ma_low = <200>;
+	qcom,temp_freeze_fastchg_current_ma = <200>;
 	//qcom,pd_temp_freeze_fastchg_current_ma_high = <850>;
 	//qcom,pd_temp_freeze_fastchg_current_ma_low = <300>;
 	//qcom,qc_temp_freeze_fastchg_current_ma_high = <850>;
@@ -223,7 +223,6 @@
 	qcom,new_ui_warning_support;
 	qcom,ffc_support;
 	qcom,dual_ffc;
-	oplus,aging_ffc_version = <1>;
 	recharge_after_full;
 	qcom,wireless_support;
 
@@ -355,7 +354,7 @@
 	oplus,pps_strategy_batt_high_temp = <410 420 430 400 410 420>;
 	oplus,pps_strategy_high_current = <4000 3000 2000 8000 4000 3000>;
 	oplus,pps_charge_strategy_soc = <0 20 35 50 75 85 95>;
-	oplus,pps_charge_strategy_temp = <0 50 120 200 350 440 510>;
+	oplus,pps_charge_strategy_temp = <0 50 120 200 350 440 530>;
 	oplus,pps_low_curr_full_strategy_temp = <120 200 350 440>;
 
 	pps_charge_third_strategy {
@@ -937,7 +936,7 @@
 		qcom,vooc-fw-type = <3>;
 		qcom,vooc_reply_mcu_bits = <7>;
 		qcom,vooc-low-temp = <0>;
-		qcom,vooc-high-temp = <500>;
+		qcom,vooc-high-temp = <510>;
 		qcom,vooc-low-soc = <1>;
 		qcom,vooc-high-soc = <90>;
 		qcom,vooc-little-cool-temp = <160>;
@@ -961,7 +960,7 @@
 		qcom,vooc_multistep_adjust_current_support;
 		qcom,vooc_multistep_initial_batt_temp = <1000>;
 		qcom,vooc_strategy_normal_current = <0x0f>;
-		qcom,vooc_batt_over_high_temp = <510>;
+		qcom,vooc_batt_over_high_temp = <530>;
 		qcom,vooc_batt_over_low_temp = <45>;
 		qcom,vooc_over_high_or_low_current = <0x0>;
 
@@ -2210,11 +2209,6 @@
 };
 
 &soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
-	};
-
 	oplus_chg_comm: oplus,common-charge {
 		status = "ok";
 		compatible = "oplus,common-charge";
@@ -2526,7 +2520,6 @@
 	support_tuv_authentication;
 	charger_no_wiress;
 	sub_board_temp_support;
-        support_sdp_screenoff;
 
 	max_charger_voltage = <15000000>;
 	boot_battery_voltage = <3350000>;
@@ -2537,7 +2530,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-	en_vol_ctrl_vibrate = <3200>;
 };
 
 /*&phy_tuning {

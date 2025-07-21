@@ -455,7 +455,6 @@ void disp_aal_notify_backlight_changed(int trans_backlight, int max_backlight)
 {
 	unsigned long flags;
 	unsigned int service_flags;
-	int prev_backlight;
 
 	if (default_comp == NULL || default_comp->mtk_crtc == NULL) {
 		AALERR("%s null pointer!\n", __func__);
@@ -473,13 +472,9 @@ void disp_aal_notify_backlight_changed(int trans_backlight, int max_backlight)
 	if (trans_backlight > max_backlight)
 		trans_backlight = max_backlight;
 
-	prev_backlight = atomic_read(&g_aal_backlight_notified);
 	atomic_set(&g_aal_backlight_notified, trans_backlight);
 
 	service_flags = 0;
-	if ((prev_backlight == 0) && (prev_backlight != trans_backlight))
-		service_flags = AAL_SERVICE_FORCE_UPDATE;
-
 	if (trans_backlight == 0) {
 //#ifdef OPLUS_BUG_STABILITY
 		oplus_display_brightness = 0;
@@ -951,6 +946,10 @@ static int disp_aal_copy_hist_to_user(struct DISP_AAL_HIST *hist)
 		g_aal_hist.srcHeight = g_aal_size.height;
 	}
 
+	g_aal_hist.serviceFlags = 0;
+	atomic_set(&g_aal0_hist_available, 0);
+	atomic_set(&g_aal1_hist_available, 0);
+
 	memcpy(&g_aal_hist_db, &g_aal_hist, sizeof(g_aal_hist));
 
 	spin_unlock_irqrestore(&g_aal_hist_lock, flags);
@@ -964,10 +963,6 @@ static int disp_aal_copy_hist_to_user(struct DISP_AAL_HIST *hist)
 	if (g_aal_fo->mtk_dre30_support && gDre30Enabled)
 		ret = copy_to_user(AAL_U32_PTR(g_aal_init_dre30.dre30_hist_addr),
 			&g_aal_dre30_hist_db, sizeof(g_aal_dre30_hist_db));
-
-	g_aal_hist.serviceFlags = 0;
-	atomic_set(&g_aal0_hist_available, 0);
-	atomic_set(&g_aal1_hist_available, 0);
 
 	AALFLOW_LOG("%s set g_aal_force_enable_irq to 0 +\n", __func__);
 	atomic_set(&g_aal_force_enable_irq, 0);

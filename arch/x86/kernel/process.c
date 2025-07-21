@@ -178,23 +178,6 @@ int copy_thread(unsigned long clone_flags, unsigned long sp, unsigned long arg,
 	task_user_gs(p) = get_user_gs(current_pt_regs());
 #endif
 
-	if (unlikely(p->flags & PF_IO_WORKER)) {
-		/*
-		 * An IO thread is a user space thread, but it doesn't
-		 * return to ret_after_fork().
-		 *
-		 * In order to indicate that to tools like gdb,
-		 * we reset the stack and instruction pointers.
-		 *
-		 * It does the same kernel frame setup to return to a kernel
-		 * function that a kernel thread does.
-		 */
-		childregs->sp = 0;
-		childregs->ip = 0;
-		kthread_frame_init(frame, sp, arg);
-		return 0;
-	}
-
 	/* Set a new TLS for the child thread? */
 	if (clone_flags & CLONE_SETTLS)
 		ret = set_new_tls(p, tls);
@@ -573,7 +556,7 @@ static __always_inline void __speculation_ctrl_update(unsigned long tifp,
 	}
 
 	if (updmsr)
-		update_spec_ctrl_cond(msr);
+		write_spec_ctrl_current(msr, false);
 }
 
 static unsigned long speculation_ctrl_update_tif(struct task_struct *tsk)
@@ -720,7 +703,7 @@ bool xen_set_default_idle(void)
 }
 #endif
 
-void __noreturn stop_this_cpu(void *dummy)
+void stop_this_cpu(void *dummy)
 {
 	local_irq_disable();
 	/*

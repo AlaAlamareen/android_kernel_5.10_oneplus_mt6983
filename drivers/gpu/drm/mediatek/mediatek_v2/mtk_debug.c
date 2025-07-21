@@ -91,12 +91,6 @@ EXPORT_SYMBOL(g_mobile_log);
 //#ifdef OPLUS_BUG_STABILITY
 #define PANEL_SERIAL_NUM_REG 0xA1
 #define PANEL_REG_READ_LEN   10
-extern int lcm_id1;
-extern int lcm_id2;
-extern unsigned int m_da;
-extern unsigned int m_db;
-extern unsigned int m_dc;
-
 //#endif /*OPLUS_BUG_STABILITY*/
 EXPORT_SYMBOL(g_msync_debug);
 
@@ -1574,62 +1568,6 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 
 		break;
 	}
-/*#ifdef OPLUS_FEATURE_DISPLAY*/
-	case 5:
-	{
-		/* Read Panel id1  0xda = 0x03 */
-		cmd_msg->channel = 0;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x06;
-		tx[0] = 0xDA;
-		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
-
-		cmd_msg->rx_cmd_num = 1;
-		cmd_msg->rx_buf[0] = vmalloc(4 * sizeof(unsigned char));
-		memset(cmd_msg->rx_buf[0], 0, 4);
-		cmd_msg->rx_len[0] = 1;
-
-		break;
-	}
-	case 6:
-	{
-		/* Read Panel id2  0xdb = 0x03 */
-		cmd_msg->channel = 0;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x06;
-		tx[0] = 0xDB;
-		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
-
-		cmd_msg->rx_cmd_num = 1;
-		cmd_msg->rx_buf[0] = vmalloc(4 * sizeof(unsigned char));
-		memset(cmd_msg->rx_buf[0], 0, 4);
-		cmd_msg->rx_len[0] = 1;
-
-		break;
-	}
-
-	case 7:
-	{
-		/* Read Panel id2  0xdc = 0x03 */
-		cmd_msg->channel = 0;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x06;
-		tx[0] = 0xDC;
-		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
-
-		cmd_msg->rx_cmd_num = 1;
-		cmd_msg->rx_buf[0] = vmalloc(4 * sizeof(unsigned char));
-		memset(cmd_msg->rx_buf[0], 0, 4);
-		cmd_msg->rx_len[0] = 1;
-
-	break;
-}
-
-/*#endif*/
-
 	default:
 		DDPMSG("%s no this test case:%d\n", __func__, case_num);
 		break;
@@ -1649,23 +1587,6 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 			*(char *)(cmd_msg->tx_buf[0]), j,
 			*(char *)(cmd_msg->rx_buf[0] + j));
 	}
-
-/*#ifdef OPLUS_FEATURE_DISPLAY*/
-	if (*(char *)(cmd_msg->tx_buf[0]) == 0xDA) {
-		lcm_id1 = *(char *)cmd_msg->rx_buf[0];
-		m_da = lcm_id1;
-		DDPPR_ERR("%s lcm_id1:0x%x\n", __func__,lcm_id1);
-	}
-	if (*(char *)(cmd_msg->tx_buf[0]) == 0xDB) {
-		lcm_id2 = *(char *)cmd_msg->rx_buf[0];
-		m_db = lcm_id2;
-		DDPPR_ERR("%s lcm_id2:0x%x\n", __func__,lcm_id2);
-	}
-	if (*(char *)(cmd_msg->tx_buf[0]) == 0xDC) {
-		m_dc = *(char *)cmd_msg->rx_buf[0];
-		DDPPR_ERR("%s 0xDC:0x%x\n", __func__,m_dc);
-	}
-/*end*/
 
 done:
 	vfree(cmd_msg->rx_buf[0]);
@@ -2291,7 +2212,7 @@ void mtk_read_ddic_v2(u8 ddic_reg, int ret_num, char ret_val[10])
 		cmd_msg->rx_cmd_num = 1;
 		cmd_msg->rx_buf[0] = vmalloc(20 * sizeof(unsigned char));
 		memset(cmd_msg->rx_buf[0], 0, 20);
-		cmd_msg->rx_len[0] = ret_num;
+		cmd_msg->rx_len[0] = 20;
 
 		ret = mtk_ddic_dsi_read_cmd(cmd_msg);
 
@@ -2328,7 +2249,7 @@ void ddic_dsi_send_cmd(unsigned int cmd_num,
 	DDPMSG("%s cmd_num:%d\n", __func__, cmd_num);
 
 	if (!cmd_num || cmd_num > 10)
-		goto done;
+		return;
 	memset(cmd_msg, 0, sizeof(struct mtk_ddic_dsi_msg));
 
 	switch (cmd_num) {
@@ -2402,7 +2323,7 @@ void mtk_read_ddic_v3(u8 ddic_reg, int ret_num, char ret_val[20])
                 cmd_msg->rx_cmd_num = 1;
                 cmd_msg->rx_buf[0] = vmalloc(20 * sizeof(unsigned char));
                 memset(cmd_msg->rx_buf[0], 0, 20);
-                cmd_msg->rx_len[0] = ret_num;
+                cmd_msg->rx_len[0] = 20;
 
                 ret = mtk_ddic_dsi_read_cmd(cmd_msg);
 
@@ -2720,61 +2641,6 @@ static void process_dbg_opt(const char *opt)
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_hrt_bw_dbg();
 		DDPINFO("HRT test-\n");
-	} else if (strncmp(opt, "paper_mode:", 11) == 0) {
-		struct drm_crtc *crtc;
-		int strength = 1;
-		DDPINFO("paper_mode test+\n");
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (!crtc) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-		if(strncmp(opt + 11, "2", 1) == 0)
-			strength = 2;
-		else if(strncmp(opt + 11, "3", 1) == 0)
-			strength = 3;
-		else if(strncmp(opt + 11, "4", 1) == 0)
-			strength = 4;
-		else if(strncmp(opt + 11, "5", 1) == 0)
-			strength = 5;
-		else if(strncmp(opt + 11, "6", 1) == 0)
-			strength = 6;
-		else if(strncmp(opt + 11, "7", 1) == 0)
-			strength = 7;
-		else if(strncmp(opt + 11, "8", 1) == 0)
-			strength = 8;
-		else if(strncmp(opt + 11, "9", 1) == 0)
-			strength = 9;
-		else if(strncmp(opt + 11, "10", 2) == 0)
-			strength = 10;
-		else if(strncmp(opt + 11, "11", 2) == 0)
-			strength = 11;
-		else if(strncmp(opt + 11, "12", 2) == 0)
-			strength = 12;
-		else if(strncmp(opt + 11, "13", 2) == 0)
-			strength = 13;
-		else if(strncmp(opt + 11, "14", 2) == 0)
-			strength = 14;
-		else if(strncmp(opt + 11, "15", 2) == 0)
-			strength = 15;
-
-		mtk_drm_paper_mode_en(crtc, 1, strength);
-		DDPINFO("paper_mode test+\n");
-	} else if (strncmp(opt, "paper_off", 9) == 0) {
-		struct drm_crtc *crtc;
-		DDPINFO("paper_mode test-\n");
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (!crtc) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_drm_paper_mode_en(crtc, 0, 0);
-		DDPINFO("paper_mode test-\n");
 	} else if (strncmp(opt, "lcm0_reset", 10) == 0) {
 		struct mtk_ddp_comp *comp;
 		struct drm_crtc *crtc;
@@ -4269,7 +4135,7 @@ static ssize_t hrt_lp_proc_set(struct file *file, const char __user *ubuf,
 	if (ret)
 		return ret;
 
-	hrt_lp_switch = val;
+	hrt_lp_switch = !!val;
 
 	return count;
 }

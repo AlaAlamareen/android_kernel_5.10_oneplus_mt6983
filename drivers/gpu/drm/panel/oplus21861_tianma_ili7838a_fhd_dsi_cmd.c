@@ -437,7 +437,7 @@ static void jdi_panel_init(struct jdi *ctx)
 	0x3a,0xfc,0x3a,0xfa,0x3a,0xf8,0x3b,0x38,0x3b,0x78,0x3b,0x76,0x4b,0xb6,0x4b,0xb6,0x4b,0xf4,0x5b,0xf4,0x7c,0x34,0x00,0x00,0x00,0x00,
 	0x00,0x00);
 	jdi_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x19);
-	jdi_dcs_write_seq_static(ctx,0XE0,0x88);   //强制demura on
+	jdi_dcs_write_seq_static(ctx,0XE0,0x88);   //Ç¿ÖÆdemura on
 	jdi_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x02);
 	jdi_dcs_write_seq_static(ctx,0X32,0x79);
 	jdi_dcs_write_seq_static(ctx,0X34,0x79);
@@ -1182,9 +1182,6 @@ static struct LCM_setting_table lcm_normal_to_aod_sam[] = {
     //{REGFLAG_DELAY,20,{}},
 
     //{REGFLAG_CMD, 1, {0x28}},
-
-    {REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x02}},
-    {REGFLAG_CMD, 2, {0x00,0x17}},
     {REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
     {REGFLAG_CMD, 1, {0x39}},
     {REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0C}},
@@ -1470,10 +1467,7 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-	if (m == NULL) {
-                pr_err("%s:%d invalid display_mode\n", __func__, __LINE__);
-                return -1;
-        }
+
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
 	else if (drm_mode_vrefresh(m) == 90)
@@ -1529,10 +1523,7 @@ static int mode_switch(struct drm_panel *panel,
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
 
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
-	if (m == NULL) {
-                pr_err("%s:%d invalid display_mode\n", __func__, __LINE__);
-                return -1;
-        }
+
 	if (drm_mode_vrefresh(m) == 60) { /* 60 switch to 120 */
 		mode_switch_to_60(panel);
 	} else if (drm_mode_vrefresh(m) == 90) { /* 1200 switch to 60 */

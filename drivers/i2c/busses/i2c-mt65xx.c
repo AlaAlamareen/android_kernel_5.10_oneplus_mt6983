@@ -113,11 +113,6 @@
 #define IMX355_I2C_MAX_FREQUENCY   (400000)
 #define I2C_MAX_FREQUENCY          (1000000)
 #define PARENT_CLK               (124800000)
-#define OV02B10_I2C_SLAVE_ADDR           (0x3d)
-#define OV02B10_EEPROM_I2C_SLAVE_ADDR    (0x52)
-#define OV08D10_I2C_SLAVE_ADDR           (0x36)
-#define OV08D10_EEPROM_I2C_SLAVE_ADDR    (0x51)
-#define I2C_FREQUENCY_400K               (400000)
 #endif
 
 #define I2C_DRV_NAME		"i2c-mt65xx"
@@ -1607,8 +1602,6 @@ static void olus_changeI2cSpeed(struct mtk_i2c *i2c, struct i2c_msg msgs[])
 {
     int ret = 0;
     unsigned int old_i2c_speed = i2c->speed_hz;
-    unsigned int old_i2c2_speed = i2c->speed_hz;
-    unsigned int old_i2c4_speed = i2c->speed_hz;
     const unsigned int project = get_project();
     if (((project == 22021) || (project == 22221)) && (i2c->adap.nr == 9)) {
         if ((msgs[0].addr == IMX355_I2C_SLAVE_ADDR) || (msgs[0].addr == IMX355_EEPROM_I2C_SLAVE_ADDR)) {
@@ -1626,45 +1619,6 @@ static void olus_changeI2cSpeed(struct mtk_i2c *i2c, struct i2c_msg msgs[])
             mtk_i2c_writew(i2c, i2c->timing_reg, OFFSET_TIMING);
             mtk_i2c_writew(i2c, i2c->high_speed_reg, OFFSET_HS);
             mtk_i2c_writew(i2c, i2c->ltiming_reg, OFFSET_LTIMING);
-        }
-    }
-
-    if (project == 24267) {
-        if (i2c->adap.nr == 2) {
-            if (msgs[0].addr == OV02B10_I2C_SLAVE_ADDR || msgs[0].addr == OV02B10_EEPROM_I2C_SLAVE_ADDR) {
-                i2c->speed_hz = I2C_FREQUENCY_400K;
-            } else {
-                i2c->speed_hz = I2C_MAX_FREQUENCY;
-            }
-            if (old_i2c2_speed != i2c->speed_hz) {
-                ret = mtk_i2c_set_speed(i2c,PARENT_CLK);
-                if (!ret) {
-                    pr_info("change i2c2 frequency to %u success", i2c->speed_hz);
-                } else {
-                    pr_err("change i2c2 frequency to %u Fail !!!", i2c->speed_hz);
-                }
-                mtk_i2c_writew(i2c, i2c->timing_reg, OFFSET_TIMING);
-                mtk_i2c_writew(i2c, i2c->high_speed_reg, OFFSET_HS);
-                mtk_i2c_writew(i2c, i2c->ltiming_reg, OFFSET_LTIMING);
-            }
-        }
-        if (i2c->adap.nr == 4) {
-            if (msgs[0].addr == OV08D10_I2C_SLAVE_ADDR || msgs[0].addr == OV08D10_EEPROM_I2C_SLAVE_ADDR) {
-                i2c->speed_hz = I2C_FREQUENCY_400K;
-            } else {
-                i2c->speed_hz = I2C_MAX_FREQUENCY;
-            }
-            if (old_i2c4_speed != i2c->speed_hz) {
-                ret = mtk_i2c_set_speed(i2c,PARENT_CLK);
-                if (!ret) {
-                    pr_info("change i2c4 frequency to %u success", i2c->speed_hz);
-                } else {
-                    pr_err("change i2c4 frequency to %u Fail !!!", i2c->speed_hz);
-                }
-                mtk_i2c_writew(i2c, i2c->timing_reg, OFFSET_TIMING);
-                mtk_i2c_writew(i2c, i2c->high_speed_reg, OFFSET_HS);
-                mtk_i2c_writew(i2c, i2c->ltiming_reg, OFFSET_LTIMING);
-            }
         }
     }
 }

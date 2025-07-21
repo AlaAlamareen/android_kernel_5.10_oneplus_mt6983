@@ -7079,7 +7079,6 @@ static int mt6895_afe_pcm_dev_probe(struct platform_device *pdev)
 		afe->memif[i].const_irq = 1;
 	}
 	afe->memif[MT6895_DEEP_MEMIF].ack = mtk_sp_clean_written_buffer_ack;
-	afe->memif[MT6895_FAST_MEMIF].ack = mtk_sp_clean_written_buffer_ack;
 
 	mutex_init(&afe->irq_alloc_lock);       /* needed when dynamic irq */
 

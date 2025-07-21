@@ -476,19 +476,6 @@ static struct imgsensor_info_struct imgsensor_info = {
         .max_framerate = 300,
 
     },
-    .custom10 = { /* QBin(VBin) V2H2 2048x1152 @30fps w/ PD DataRate 1284 Tline:3.9us*/
-        .pclk = 2256000000,
-        .linelength = 8816,
-        .framelength = 8528,
-        .startx = 0,
-        .starty = 0,
-        .grabwindow_width = 2048,
-        .grabwindow_height = 1152,
-        .mipi_data_lp2hs_settle_dc = 85,
-        .mipi_pixel_rate = 880460000,
-        .max_framerate = 300,
-
-    },
     .min_gain = BASEGAIN * 1,
     .max_gain = BASEGAIN * 64,
     .min_gain_iso = 100,
@@ -503,7 +490,7 @@ static struct imgsensor_info_struct imgsensor_info = {
     .ihdr_support = 0,    /* 1: support; 0: not support */
     .ihdr_le_firstline = 0,    /* 1:le first; 0: se first */
     .temperature_support = 1, /* 1, support; 0,not support */
-    .sensor_mode_num = 15,    /* support sensor mode num */
+    .sensor_mode_num = 14,    /* support sensor mode num */
     .frame_time_delay_frame = 3,
 
     .pre_delay_frame = 2,    /* enter preview delay frame num */
@@ -555,7 +542,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
     .i4Crop = {
         {0, 0}, {0, 0}, {0, 384}, {0, 384}, {0, 384},
         {0, 384}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
-        {0, 384}, {0, 384}, {0, 0}, {1024, 576}
+        {0, 384}, {0, 384}, {0, 0}
     },
     .iMirrorFlip = 3,
 };
@@ -604,9 +591,6 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[] = {
     /* custom9 preISP Reg B Reserved*/
     {8192, 6144,    0,  768, 8192, 4608, 4096, 2304,
         0,    0, 4096, 2304,    0,    0, 4096, 2304},
-    /* custom10 */
-    {8192, 6144,    0,  768, 8192, 4608, 2048, 1152,
-        0,    0, 2048, 1152,    0,    0, 2048, 1152},
 };
 
 //Sensor vc info2 useless in dx-1/p platform.
@@ -740,15 +724,7 @@ static struct SENSOR_VC_INFO2_STRUCT SENSOR_VC_INFO2[] = {
             {VC_PDAF_STATS_NE_PIX_1, 0x00, 0x30, 5120, 576},
         },
         1
-    },
-    {
-        0x03, 0x0a, 0x00, 0x08, 0x40, 0x00, //custom10
-        {
-            {VC_STAGGER_NE, 0x00, 0x2b, 0x800, 0x480},
-            {VC_PDAF_STATS_NE_PIX_1, 0x03, 0x2b, 0x800, 0x120},
-        },
-        1
-    },
+    }
 };
 //mode    0,  1,  2,   3,  4,  5,  6,  7,   8,   9,  10, 11,  12,  13,  14, 15, 16, 17, 18, 19
 //note: reg_value from reg(0x0200, 0x0201),integ line = reg_value / linelength * 1000
@@ -767,7 +743,6 @@ static MUINT32 fine_integ_line_table[SENSOR_SCENARIO_ID_MAX] = {
         826,    //mode 11
         2826,   //mode 12
         2826,   //mode 13
-        2555,   //mode 14
     };
 static MUINT32 min_shutter_table[SENSOR_SCENARIO_ID_MAX] = {
         8,    //mode 0
@@ -784,7 +759,6 @@ static MUINT32 min_shutter_table[SENSOR_SCENARIO_ID_MAX] = {
         8,    //mode 11
         8,    //mode 12
         8,    //mode 13
-        8,    //mode 14
     };
 
 static MUINT32 exposure_step_table[SENSOR_SCENARIO_ID_MAX] = {
@@ -802,7 +776,6 @@ static MUINT32 exposure_step_table[SENSOR_SCENARIO_ID_MAX] = {
         4,    //mode 11
         8,    //mode 12
         4,    //mode 13
-        4,    //mode 14
     };
 
 #define QSC_SIZE 3072
@@ -878,10 +851,6 @@ static void get_vc_info_2(struct SENSOR_VC_INFO2_STRUCT *pvcinfo2, kal_uint32 sc
         break;
     case SENSOR_SCENARIO_ID_CUSTOM9:
         memcpy((void *)pvcinfo2, (void *)&SENSOR_VC_INFO2[13],
-            sizeof(struct SENSOR_VC_INFO2_STRUCT));
-        break;
-    case SENSOR_SCENARIO_ID_CUSTOM10:
-        memcpy((void *)pvcinfo2, (void *)&SENSOR_VC_INFO2[14],
             sizeof(struct SENSOR_VC_INFO2_STRUCT));
         break;
     case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
@@ -1143,6 +1112,7 @@ static void write_shutter(struct subdrv_ctx *ctx, kal_uint32 shutter, kal_bool g
 
     shutter = FINE_INTEG_CONVERT(shutter, fineIntegTime);
     shutter = round_up(shutter, 4);
+
     if (shutter > ctx->min_frame_length - imgsensor_info.margin)
         ctx->frame_length = shutter + imgsensor_info.margin;
     else
@@ -1782,19 +1752,6 @@ static void custom9_setting(struct subdrv_ctx *ctx)
     LOG_INF("E\n");
     imx890_table_write_cmos_sensor_8(ctx, imx890_custom9_setting,
         sizeof(imx890_custom9_setting)/sizeof(kal_uint16));
-    set_mirror_flip(ctx, ctx->mirror);
-    if (otp_flag == OTP_QSC_NONE) {
-        LOG_INF("OTP no QSC Data, close qsc register");
-        write_cmos_sensor_8(ctx, 0x32D2, 0x00);
-    }
-    LOG_INF("X\n");
-}
-
-static void custom10_setting(struct subdrv_ctx *ctx)
-{
-    LOG_INF("E\n");
-    imx890_table_write_cmos_sensor_8(ctx, imx890_custom10_setting,
-        sizeof(imx890_custom10_setting)/sizeof(kal_uint16));
     set_mirror_flip(ctx, ctx->mirror);
     if (otp_flag == OTP_QSC_NONE) {
         LOG_INF("OTP no QSC Data, close qsc register");
@@ -2605,22 +2562,6 @@ static kal_uint32 custom9(struct subdrv_ctx *ctx,
     return ERROR_NONE;
 }    /* custom9 */
 
-static kal_uint32 custom10(struct subdrv_ctx *ctx,
-        MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
-        MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
-{
-    ctx->sensor_mode = IMGSENSOR_MODE_CUSTOM10;
-    ctx->pclk = imgsensor_info.custom10.pclk;
-    ctx->line_length = imgsensor_info.custom10.linelength;
-    ctx->frame_length = imgsensor_info.custom10.framelength;
-    ctx->min_frame_length = imgsensor_info.custom10.framelength;
-    ctx->readout_length = imgsensor_info.custom10.readout_length;
-    ctx->read_margin = imgsensor_info.custom10.read_margin;
-    ctx->autoflicker_en = KAL_FALSE;
-    custom10_setting(ctx);
-
-    return ERROR_NONE;
-}    /* custom10 */
 
 static int get_resolution(struct subdrv_ctx *ctx,
     MSDK_SENSOR_RESOLUTION_INFO_STRUCT *sensor_resolution)
@@ -2688,8 +2629,7 @@ static int get_info(struct subdrv_ctx *ctx,
         imgsensor_info.custom8_delay_frame;
     sensor_info->DelayFrame[SENSOR_SCENARIO_ID_CUSTOM9] =
         imgsensor_info.custom9_delay_frame;
-    sensor_info->DelayFrame[SENSOR_SCENARIO_ID_CUSTOM10] =
-        imgsensor_info.custom10_delay_frame;
+
     sensor_info->SensorMasterClockSwitch = 0; /* not use */
     sensor_info->SensorDrivingCurrent = imgsensor_info.isp_driving_current;
 
@@ -2770,9 +2710,6 @@ static int control(struct subdrv_ctx *ctx, enum SENSOR_SCENARIO_ID_ENUM scenario
         break;
     case SENSOR_SCENARIO_ID_CUSTOM9:
         custom9(ctx, image_window, sensor_config_data);
-        break;
-    case SENSOR_SCENARIO_ID_CUSTOM10:
-        custom10(ctx, image_window, sensor_config_data);
         break;
     default:
         LOG_INF("Error ScenarioId setting");
@@ -3030,20 +2967,6 @@ static kal_uint32 set_max_framerate_by_scenario(struct subdrv_ctx *ctx,
         //if (ctx->frame_length > ctx->shutter)
             set_dummy(ctx);
         break;
-    case SENSOR_SCENARIO_ID_CUSTOM10:
-        frame_length = imgsensor_info.custom10.pclk / framerate * 10
-                / imgsensor_info.custom10.linelength;
-        ctx->dummy_line =
-            (frame_length > imgsensor_info.custom10.framelength)
-            ? (frame_length - imgsensor_info.custom10.framelength)
-            : 0;
-        ctx->frame_length =
-            imgsensor_info.custom10.framelength
-            + ctx->dummy_line;
-        ctx->min_frame_length = ctx->frame_length;
-        //if (ctx->frame_length > ctx->shutter)
-            set_dummy(ctx);
-        break;
     default:  /*coding with  preview scenario by default*/
         frame_length = imgsensor_info.pre.pclk / framerate * 10
             / imgsensor_info.pre.linelength;
@@ -3108,9 +3031,6 @@ static kal_uint32 get_default_framerate_by_scenario(struct subdrv_ctx *ctx,
     case SENSOR_SCENARIO_ID_CUSTOM9:
         *framerate = imgsensor_info.custom9.max_framerate;
         break;
-    case SENSOR_SCENARIO_ID_CUSTOM10:
-        *framerate = imgsensor_info.custom10.max_framerate;
-        break;
     default:
         break;
     }
@@ -3135,7 +3055,6 @@ static kal_uint32 get_fine_integ_line_by_scenario(struct subdrv_ctx *ctx,
     case SENSOR_SCENARIO_ID_CUSTOM7:
     case SENSOR_SCENARIO_ID_CUSTOM8:
     case SENSOR_SCENARIO_ID_CUSTOM9:
-    case SENSOR_SCENARIO_ID_CUSTOM10:
         *fine_integ_line = fine_integ_line_table[scenario_id];
         break;
     default:
@@ -3278,7 +3197,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
         case SENSOR_SCENARIO_ID_CUSTOM7:
         case SENSOR_SCENARIO_ID_CUSTOM8:
         case SENSOR_SCENARIO_ID_CUSTOM9:
-        case SENSOR_SCENARIO_ID_CUSTOM10:
             *(feature_data + 1)
             = (enum ACDK_SENSOR_OUTPUT_DATA_FORMAT_ENUM)
                 imgsensor_info.sensor_output_dataformat;
@@ -3320,7 +3238,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
         case SENSOR_SCENARIO_ID_CUSTOM7:
         case SENSOR_SCENARIO_ID_CUSTOM8:
         case SENSOR_SCENARIO_ID_CUSTOM9:
-        case SENSOR_SCENARIO_ID_CUSTOM10:
 			*(feature_data + 1) = min_shutter_table[*feature_data];
             *(feature_data + 2) = exposure_step_table[*feature_data];
             break;
@@ -3387,10 +3304,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
         case SENSOR_SCENARIO_ID_CUSTOM9:
             *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
                 = imgsensor_info.custom9.pclk;
-            break;
-        case SENSOR_SCENARIO_ID_CUSTOM10:
-            *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
-                = imgsensor_info.custom10.pclk;
             break;
         case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
         default:
@@ -3468,11 +3381,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
             *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
             = (imgsensor_info.custom9.framelength << 16)
                 + (ratio * imgsensor_info.custom9.linelength);
-            break;
-        case SENSOR_SCENARIO_ID_CUSTOM10:
-            *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
-            = (imgsensor_info.custom10.framelength << 16)
-                + (ratio * imgsensor_info.custom10.linelength);
             break;
         case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
         default:
@@ -3698,11 +3606,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
             (void *)&imgsensor_winsize_info[13],
             sizeof(struct SENSOR_WINSIZE_INFO_STRUCT));
             break;
-        case SENSOR_SCENARIO_ID_CUSTOM10:
-            memcpy((void *)wininfo,
-            (void *)&imgsensor_winsize_info[14],
-            sizeof(struct SENSOR_WINSIZE_INFO_STRUCT));
-            break;
         case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
         default:
             memcpy((void *)wininfo,
@@ -3766,9 +3669,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
             *(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 1;
             break;
         case SENSOR_SCENARIO_ID_CUSTOM9:
-            *(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 1;
-            break;
-        case SENSOR_SCENARIO_ID_CUSTOM10:
             *(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 1;
             break;
         default:
@@ -3849,14 +3749,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
                             (UINT16) (*feature_data));
         pvcinfo2 = (struct SENSOR_VC_INFO2_STRUCT *) (uintptr_t) (*(feature_data + 1));
         get_vc_info_2(pvcinfo2, *feature_data_32);
-        break;
-    case SENSOR_FEATURE_GET_EXPOSURE_COUNT_BY_SCENARIO:
-        if (*feature_data == SENSOR_SCENARIO_ID_CUSTOM8 ||
-            *feature_data == SENSOR_SCENARIO_ID_CUSTOM9) {
-            *(feature_data + 1) = 2;  /* 2DOL */
-        } else {
-            *(feature_data + 1) = 1;  /* 1DOL */
-        }
         break;
     case SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO:
         if (*feature_data == SENSOR_SCENARIO_ID_NORMAL_VIDEO) {
@@ -4072,10 +3964,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
             *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
                 = imgsensor_info.custom9.mipi_pixel_rate;
             break;
-        case SENSOR_SCENARIO_ID_CUSTOM10:
-            *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
-                = imgsensor_info.custom10.mipi_pixel_rate;
-            break;
         case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
         default:
             *(MUINT32 *)(uintptr_t)(*(feature_data + 1))
@@ -4131,7 +4019,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
             case SENSOR_SCENARIO_ID_CUSTOM7:
             case SENSOR_SCENARIO_ID_CUSTOM8:
             case SENSOR_SCENARIO_ID_CUSTOM9:
-            case SENSOR_SCENARIO_ID_CUSTOM10:
             default:
                 *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1;
                 break;
@@ -4448,27 +4335,6 @@ static struct mtk_mbus_frame_desc_entry frame_desc_preisp_cus9[] = {
     },
 };
 
-static struct mtk_mbus_frame_desc_entry frame_desc_cus10[] = {
-    {
-        .bus.csi2 = {
-            .channel = 0,  // vc-id
-            .data_type = 0x2b,  // dt
-            .hsize = 2048,
-            .vsize = 1152,
-            .user_data_desc = VC_STAGGER_NE,
-        },
-    },
-    {
-        .bus.csi2 = {
-            .channel = 3,
-            .data_type = 0x2b,
-            .hsize = 2048,
-            .vsize = 288,
-            .user_data_desc = VC_PDAF_STATS_NE_PIX_1,
-        },
-    },
-};
-
 static int get_frame_desc(struct subdrv_ctx *ctx,
         int scenario_id, struct mtk_mbus_frame_desc *fd)
 {
@@ -4542,11 +4408,6 @@ static int get_frame_desc(struct subdrv_ctx *ctx,
         fd->type = MTK_MBUS_FRAME_DESC_TYPE_CSI2;
         fd->num_entries = ARRAY_SIZE(frame_desc_preisp_cus9);
         memcpy(fd->entry, frame_desc_preisp_cus9, sizeof(frame_desc_preisp_cus9));
-        break;
-    case SENSOR_SCENARIO_ID_CUSTOM10:
-        fd->type = MTK_MBUS_FRAME_DESC_TYPE_CSI2;
-        fd->num_entries = ARRAY_SIZE(frame_desc_cus10);
-        memcpy(fd->entry, frame_desc_cus10, sizeof(frame_desc_cus10));
         break;
     default:
         return -1;

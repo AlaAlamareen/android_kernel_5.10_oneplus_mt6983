@@ -3720,7 +3720,7 @@ static ssize_t _iris_list_debug(struct file *file,
 	char buf[64];
 	uint32_t *payload = NULL;
 
-	if (count >= sizeof(buf))
+	if (count > sizeof(buf))
 		return -EINVAL;
 
 	memset(buf, 0, sizeof(buf));
@@ -3762,7 +3762,7 @@ static ssize_t _iris_dump_cmd_payload(struct file *file,
 	char buf[64];
 	uint32_t *payload = NULL;
 
-	if (count >= sizeof(buf))
+	if (count > sizeof(buf))
 		return -EINVAL;
 
 	memset(buf, 0, sizeof(buf));

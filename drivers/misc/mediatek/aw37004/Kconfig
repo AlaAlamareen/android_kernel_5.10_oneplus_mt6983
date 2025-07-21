@@ -1,6 +1,0 @@
-config MTK_CAMERA_LDO
-	tristate "Mediatek camera ldo driver"
-	default n
-	help
-	  This is CAMERA ldo driver.
-

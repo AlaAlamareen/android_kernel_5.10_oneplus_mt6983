@@ -1032,10 +1032,7 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 			mmp_data2_fence(task->fence->context, task->fence->seqno));
 	}
 
-	if (task->config && task->config->wq_done)
-		queue_work(task->config->wq_done, &task->wq_work_done);
-	else
-		mml_err("wq_done is NULL!!!");
+	queue_work(task->config->wq_done, &task->wq_work_done);
 	mml_trace_end();
 }
 
@@ -1618,12 +1615,9 @@ void mml_core_deinit_config(struct mml_frame_config *cfg)
 
 	/* make command, engine allocated private data */
 	for (pipe = 0; pipe < MML_PIPE_CNT; pipe++) {
-		if (cfg->path[pipe]) {
-			for (i = 0; i < cfg->path[pipe]->node_cnt; i++)
-				kfree(cfg->cache[pipe].cfg[i].data);
-		}
-		if (cfg->tile_output[pipe])
-			destroy_tile_output(cfg->tile_output[pipe]);
+		for (i = 0; i < cfg->path[pipe]->node_cnt; i++)
+			kfree(cfg->cache[pipe].cfg[i].data);
+		destroy_tile_output(cfg->tile_output[pipe]);
 	}
 	core_destroy_wq(&cfg->wq_done);
 }

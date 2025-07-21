@@ -143,7 +143,7 @@ void iris_init_panel_timing(void *connector)
 {
 	struct drm_connector *conn = (struct drm_connector *)connector;
 	struct drm_display_mode *mode;
-	struct dsi_mode_info timing = {0};
+	struct dsi_mode_info timing;
 	int i = 0;
 
 	if (!conn) {

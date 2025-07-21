@@ -500,8 +500,6 @@ enum mtk_ddp_io_cmd {
 	LCM_SEED,
 	PANEL_SN_SET,
 	DC_POST_ENTER,
-	OPLUS_GET_INFO,
-	DSI_SET_DEMURA_BL,
 //#endif
 //#ifdef OPLUS_BUG_STABILITY
 	OPLUS_GET_MIPI_LPX,
@@ -516,7 +514,6 @@ enum mtk_ddp_io_cmd {
 	DSI_SET_HPWM_ELVSS,
 	DSI_SET_HPWM_FPS,
 	DSI_SET_HPWM_PLUSS_BL,
-	DSI_SET_HBM_MAX,
 //#endif
 };
 
@@ -679,7 +676,6 @@ struct mtk_ddp_comp {
 	u32 last_qos_bw;
 	u32 fbdc_bw;
 	u32 hrt_bw;
-	bool clk_on;
 };
 
 static inline void mtk_ddp_comp_config(struct mtk_ddp_comp *comp,

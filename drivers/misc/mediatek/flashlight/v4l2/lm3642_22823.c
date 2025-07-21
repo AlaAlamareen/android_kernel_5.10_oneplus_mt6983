@@ -438,8 +438,6 @@ static int lm3642_set_ctrl(struct v4l2_ctrl *ctrl, enum lm3642_led_id led_no)
 	case V4L2_CID_FLASH_TORCH_INTENSITY:
 		rval = lm3642_torch_brt_ctrl(flash, led_no, ctrl->val);
 		break;
-	default:
-	    break;
 	}
 
 err_out:

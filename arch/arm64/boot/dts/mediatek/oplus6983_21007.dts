@@ -88,10 +88,6 @@
 		};
 };
 
-&memory_ssmr_features {
-    prot-region-based-size = <0 0x200000>;
-};
-
 /*Trustonic Mobicore real driver*/
 &mobicore {
 	trustonic,real-drv=<1>;
@@ -766,11 +762,6 @@
 };
 */
 &mt6375_typec {
-/*#ifndef OPLUS_FEATURE_CHG_BASIC*/
-		/*tcpc,rp_level = <0>;*/
-/*#else*/
-		tcpc,rp_level = <1>;
-/*#endif*/
 	port {
 		tcpc_typec_usb: endpoint@0 {
 			remote-endpoint = <&ssusb_mux>;
@@ -882,7 +873,6 @@
 		kernel_grip_support;
 		freq_hop_simulate_support;
 		fingerprint_underscreen_support;
-                fp_disable_after_resume;
 		pressure_report_support;
 		exception_upload_support;
 		touchpanel,single-optimized-time = <8>;

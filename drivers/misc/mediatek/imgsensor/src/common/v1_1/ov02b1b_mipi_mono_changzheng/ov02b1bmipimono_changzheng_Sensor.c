@@ -1322,7 +1322,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 				*sensor_id = return_sensor_id();
 			}
 			if (*sensor_id == imgsensor_info.sensor_id) {
-			pr_info("i2c write id : 0x%x, sensor id: 0x%x\n",
+			LOG_INF("i2c write id : 0x%x, sensor id: 0x%x\n",
 			imgsensor.i2c_write_id, *sensor_id);
 			imgsensor_info.module_id = 0x00;
 			if (deviceInfo_register_value == 0x00) {
@@ -1404,7 +1404,7 @@ static kal_uint32 open(void)
 				sensor_id = return_sensor_id();
 			}
 			if (sensor_id == imgsensor_info.sensor_id) {
-				pr_info("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id, sensor_id);
+				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id, sensor_id);
 				break;
 			}
 

@@ -1294,9 +1294,7 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
     kal_uint32 calc_fl = 0;
     kal_uint32 calc_fl2 = 0;
     kal_uint32 calc_fl3 = 0;
-    kal_uint16 le = 0;
-    kal_uint16 me = 0;
-    kal_uint16 se = 0;
+    kal_uint16 le, me, se;
     kal_uint32 fineIntegTime = fine_integ_line_table[ctx->current_scenario_id];
     kal_uint32 readoutLength = ctx->readout_length;
     kal_uint32 readMargin = ctx->read_margin;
@@ -1362,8 +1360,6 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
         le = shutters[0];
         me = 0;
         se = 0;
-        break;
-    default:
         break;
     }
 
@@ -4135,6 +4131,27 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
                 *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1037400000;
                 break;
             default:
+                break;
+        }
+        break;
+    case SENSOR_FEATURE_ESD_RESET_BY_USER:
+        switch (*feature_data) {
+            case SENSOR_SCENARIO_ID_NORMAL_PREVIEW:
+            case SENSOR_SCENARIO_ID_NORMAL_CAPTURE:
+            case SENSOR_SCENARIO_ID_NORMAL_VIDEO:
+            case SENSOR_SCENARIO_ID_HIGHSPEED_VIDEO:
+            case SENSOR_SCENARIO_ID_SLIM_VIDEO:
+            case SENSOR_SCENARIO_ID_CUSTOM1:
+            case SENSOR_SCENARIO_ID_CUSTOM2:
+            case SENSOR_SCENARIO_ID_CUSTOM3:
+            case SENSOR_SCENARIO_ID_CUSTOM4:
+            case SENSOR_SCENARIO_ID_CUSTOM5:
+            case SENSOR_SCENARIO_ID_CUSTOM6:
+            case SENSOR_SCENARIO_ID_CUSTOM7:
+            case SENSOR_SCENARIO_ID_CUSTOM8:
+            case SENSOR_SCENARIO_ID_CUSTOM9:
+            default:
+                *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1;
                 break;
         }
         break;

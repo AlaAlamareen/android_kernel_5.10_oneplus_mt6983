@@ -1517,22 +1517,6 @@ void nq_exit(void)
 	mc_clock_exit();
 }
 
-void boost_tee(void)
-{
-    int cnt;
-    for (cnt = 0; cnt < NQ_TEE_WORKER_THREADS; cnt++) {
-        set_user_nice(l_ctx.tee_worker[cnt], MIN_NICE);
-    }
-}
-
-void deboost_tee(void)
-{
-    int cnt;
-    for (cnt = 0; cnt < NQ_TEE_WORKER_THREADS; cnt++) {
-        set_user_nice(l_ctx.tee_worker[cnt], 0);
-    }
-}
-
 #ifdef MC_TEE_HOTPLUG
 int nq_cpu_off(unsigned int cpu)
 {

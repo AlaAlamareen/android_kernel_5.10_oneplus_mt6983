@@ -582,8 +582,7 @@ struct aw8697_que_seq {
 #define OS12_NEW_RING_END       89
 #define OPLUS_RING_START       161
 #define OPLUS_RING_END         167
-#define OS14_NEW_RING_START			(371)
-#define OS14_NEW_RING_END			(410)
+
 
 #define AW8697_WAVEFORM_INDEX_CS_PRESS             16
 #define AW8697_WAVEFORM_INDEX_TRANSIENT            8

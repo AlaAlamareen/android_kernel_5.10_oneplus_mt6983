@@ -332,7 +332,7 @@ static void set_dummy(struct subdrv_ctx *ctx)
 {
     LOG_INF("dummyline = %d, dummypixels = %d\n",
               ctx->dummy_line, ctx->dummy_pixel);
-    write_cmos_sensor_8(ctx, 0x0350, 0x01); /* Enable auto extend */
+    write_cmos_sensor_8(ctx, 0x0350, 0x00); /* Disable auto extend */
     write_cmos_sensor(ctx, 0x0104, 0x01);
     write_cmos_sensor(ctx, 0x0340, ctx->frame_length >> 8);
     write_cmos_sensor(ctx, 0x0341, ctx->frame_length & 0xFF);

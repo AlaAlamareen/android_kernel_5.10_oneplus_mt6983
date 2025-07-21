@@ -28,17 +28,6 @@ static struct icc_path *usb_icc_path;
 unsigned int peak_bw;
 struct device *gdev;
 
-#if IS_ENABLED(CONFIG_USB_STORAGE)
-static int freq_hold(struct act_arg_obj *arg)
-{
-	return 0;
-}
-
-static int freq_release(struct act_arg_obj *arg)
-{
-	return 0;
-}
-#else
 static int freq_hold(struct act_arg_obj *arg)
 {
 
@@ -92,7 +81,6 @@ static int freq_release(struct act_arg_obj *arg)
 	}
 	return 0;
 }
-#endif
 
 static int core_hold(struct act_arg_obj *arg)
 {

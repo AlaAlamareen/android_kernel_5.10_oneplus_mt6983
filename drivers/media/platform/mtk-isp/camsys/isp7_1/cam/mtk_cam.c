@@ -340,14 +340,7 @@ void mtk_cam_s_data_update_timestamp(struct mtk_cam_buffer *buf,
 		case MTK_RAW_META_SV_OUT_0:
 		case MTK_RAW_META_SV_OUT_1:
 		case MTK_RAW_META_SV_OUT_2:
-			/* for seldom case, proc raw sof is abnormal earlier than meta sof */
-			if (vb->timestamp == 0) {
-				vb->timestamp = s_data->sv_frame_params.sensor_meta_tstamp[0];
-				dev_info(ctx->cam->dev, "[%s] fix ts:ctx:%d req:%d(ns) s_data:%lld, meta:%lld\n",
-				__func__, ctx->stream_id, s_data->frame_seq_no, s_data->timestamp,
-				s_data->sv_frame_params.sensor_meta_tstamp[0]);
-			}
-			dev_dbg(ctx->cam->dev,
+			dev_info(ctx->cam->dev,
 			"%s:%s:vb sequence:%d, timestamp:%lld (mono:%d), pure/meta/proc:%lld/%lld/%lld\n",
 			__func__, node->desc.name, buf->vbb.sequence, vb->timestamp,
 			vb->vb2_queue->timestamp_flags & V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC,
@@ -722,12 +715,7 @@ void *mtk_cam_get_vbuf_va(struct mtk_cam_ctx *ctx,
 }
 
 void mtk_cam_get_timestamp(struct mtk_cam_ctx *ctx,
-		#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		struct mtk_cam_request_stream_data *s_data)
-		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
-		struct mtk_cam_request_stream_data *s_data,
-		struct mtk_cam_request_stream_data *s_data_fh)
-		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 {
 	struct mtk_cam_buffer *buf;
 	struct vb2_buffer *vb;
@@ -772,13 +760,10 @@ void mtk_cam_get_timestamp(struct mtk_cam_ctx *ctx,
 			__func__, ctx->stream_id);
 		return;
 	}
-	#ifndef OPLUS_FEATURE_CAMERA_COMMON
+
 	fho_va = (u32 *)(s_data->working_buf->buffer.va +
 		s_data->working_buf->buffer.size - 64 * (subsample + 1));
-	#else /*OPLUS_FEATURE_CAMERA_COMMON*/
-	fho_va = (u32 *)(s_data_fh->working_buf->buffer.va +
-		s_data_fh->working_buf->buffer.size - 64 * (subsample + 1));
-	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
+
 	pTimestamp = mtk_cam_get_timestamp_addr(vaddr);
 	if (!pTimestamp) {
 		dev_info(ctx->cam->dev,
@@ -929,14 +914,7 @@ STOP_SCAN:
 			s_data_mstream = NULL;
 
 		if (is_raw_subdev(pipe_id)) {
-			#ifndef OPLUS_FEATURE_CAMERA_COMMON
 			mtk_cam_get_timestamp(ctx, s_data);
-			#else /*OPLUS_FEATURE_CAMERA_COMMON*/
-			if (s_data_mstream)
-				mtk_cam_get_timestamp(ctx, s_data, s_data_mstream);
-			else
-				mtk_cam_get_timestamp(ctx, s_data, s_data);
-			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 			mtk_cam_req_dbg_works_clean(s_data);
 			mtk_cam_req_works_clean(s_data);
 
@@ -1194,15 +1172,6 @@ STOP_SCAN:
 				 s_data->frame_seq_no);
 		}
 		atomic_set(&s_data->meta1_done_work.is_queued, 1);
-
-		if (atomic_read(&s_data->extmeta_done_work.is_queued)) {
-			cancel_work_sync(&s_data->extmeta_done_work.work);
-			dev_info(cam->dev,
-				 "%s:%s:pipe(%d):seq(%d): cancel AFO done_work\n",
-				 __func__, req->req.debug_str, pipe_id,
-				 s_data->frame_seq_no);
-		}
-		atomic_set(&s_data->extmeta_done_work.is_queued, 1);
 
 		if (atomic_read(&s_data->frame_done_work.is_queued)) {
 			cancel_work_sync(&s_data->frame_done_work.work);
@@ -2188,11 +2157,19 @@ static int mtk_cam_calc_pending_res(struct mtk_cam_device *cam,
 
 	/*worst case throughput prepare for stagger dynamic switch exposure num*/
 	if (mtk_cam_feature_is_stagger(res_cfg->raw_feature)) {
-		dev_info(cam->dev,
-				"%s:pipe(%d): worst case stagger 2exp prate (0x%x):%lld->%lld\n",
-				__func__, pipe_id, res_cfg->raw_feature,
-				prate, 12 * prate / 10);
-		prate = 12 * prate / 10;
+		if (mtk_cam_feature_is_2_exposure(res_cfg->raw_feature)) {
+			dev_info(cam->dev,
+				 "%s:pipe(%d): worst case stagger 2exp prate (0x%x):%lld->%lld\n",
+				 __func__, pipe_id, res_cfg->raw_feature,
+				 prate, prate * 2);
+			prate = 2 * prate;
+		} else if (mtk_cam_feature_is_3_exposure(res_cfg->raw_feature)) {
+			dev_info(cam->dev,
+				 "%s:pipe(%d): worst case stagger 3exp prate (0x%x):%lld->%lld\n",
+				 __func__, pipe_id, res_cfg->raw_feature,
+				 prate, prate * 3);
+			prate = 3 * prate;
+		}
 	}
 
 	mtk_raw_resource_calc(cam, res_cfg, prate, res_cfg->res_plan, fps,
@@ -3705,8 +3682,6 @@ static void mtk_cam_req_s_data_init(struct mtk_cam_request *req,
 	req_stream_data->req = req;
 	req_stream_data->pipe_id = pipe_id;
 	req_stream_data->state.estate = E_STATE_READY;
-	req_stream_data->state.sof_cnt_key = 0;
-	req_stream_data->state.loss_raw_cq_key = 0;
 	req_stream_data->index = s_data_index;
 	req_stream_data->req_id = 0;
 	atomic_set(&req_stream_data->buf_state, -1);
@@ -3724,8 +3699,6 @@ static void mtk_cam_req_s_data_init(struct mtk_cam_request *req,
 	mtk_cam_req_work_init(&req_stream_data->frame_done_work,
 				  req_stream_data);
 	mtk_cam_req_work_init(&req_stream_data->meta1_done_work,
-				  req_stream_data);
-	mtk_cam_req_work_init(&req_stream_data->extmeta_done_work,
 				  req_stream_data);
 	/**
 	 * clean the param structs since we support req reinit.
@@ -4610,14 +4583,8 @@ static unsigned int get_master_raw_id(unsigned int num_raw_drivers,
 			break;
 	}
 
-#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	if (i == num_raw_drivers)
 		pr_info("no master raw id found, enabled_raw 0x%x", enabled_raw);
-#else /* OPLUS_FEATURE_CAMERA_COMMON */
-	if (i == num_raw_drivers) {
-		pr_info("no master raw id found, enabled_raw 0x%x, num_raw_drivers(%u)", enabled_raw, num_raw_drivers);
-	}
-#endif /* OPLUS_FEATURE_CAMERA_COMMON */
 
 	return i;
 }
@@ -4625,17 +4592,7 @@ struct mtk_raw_device *get_master_raw_dev(struct mtk_cam_device *cam,
 					  struct mtk_raw_pipeline *pipe)
 {
 	unsigned int i = get_master_raw_id(cam->num_raw_drivers, pipe->enabled_raw);
-#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	struct device *dev_master = cam->raw.devs[i];
-#else /* OPLUS_FEATURE_CAMERA_COMMON */
-	struct device *dev_master;
-	if (i >= RAW_PIPELINE_NUM) {
-		dev_info(cam->dev, "%s: Raw pipelineId(%u) out of bounds(%u)\n", __func__, i, RAW_PIPELINE_NUM);
-		return NULL;
-	}
-	dev_master = cam->raw.devs[i];
-#endif /* OPLUS_FEATURE_CAMERA_COMMON */
-
 
 	if (!dev_master) {
 		dev_info(cam->dev, "%s: dev_master is null\n", __func__);
@@ -4999,7 +4956,6 @@ static int isp_composer_handle_ack(struct mtk_cam_device *cam,
 
 		return 0;
 	}
-
 	spin_lock(&ctx->composed_buffer_list.lock);
 	list_add_tail(&buf_entry->list_entry,
 		      &ctx->composed_buffer_list.list);
@@ -5009,6 +4965,7 @@ static int isp_composer_handle_ack(struct mtk_cam_device *cam,
 			__func__, ctx->composed_buffer_list.cnt);
 	}
 	spin_unlock(&ctx->composed_buffer_list.lock);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	/*EXT-ISP enqueue sv buffer first*/
 	if (mtk_cam_is_ext_isp(ctx) &&
 		ctx->composed_frame_seq_no == 1) {
@@ -5023,8 +4980,6 @@ static int isp_composer_handle_ack(struct mtk_cam_device *cam,
 			spin_unlock(&ctx->mraw_processing_buffer_list[i].lock);
 		}
 		spin_unlock(&ctx->using_buffer_list.lock);
-		/* mmqos update */
-		mtk_cam_qos_bw_calc(ctx, s_data->raw_dmas, false);
 		/* apply mraw CQ for all streams */
 		for (i = 0; i < ctx->used_mraw_num; i++) {
 			mraw_dev = get_mraw_dev(ctx->cam, ctx->mraw_pipe[i]);
@@ -5036,14 +4991,12 @@ static int isp_composer_handle_ack(struct mtk_cam_device *cam,
 					mraw_buf_entry[i]->mraw_cq_desc_size,
 					mraw_buf_entry[i]->mraw_cq_desc_offset,
 					(ctx->composed_frame_seq_no == 1) ? 1 : 0);
-			} else {
-				mtk_cam_mraw_vf_on(mraw_dev, 0);
 			}
 		}
-		mtk_cam_event_extisp_camsys_ready(ctx->pipe);
 
 		return 0;
 	}
+#endif
 	for (i = 0; i < ctx->used_mraw_num; i++) {
 		spin_lock(&ctx->mraw_composed_buffer_list[i].lock);
 		list_add_tail(&mraw_buf_entry[i]->list_entry,
@@ -5059,6 +5012,12 @@ static int isp_composer_handle_ack(struct mtk_cam_device *cam,
 			raw_dev = dev_get_drvdata(dev);
 			mtk_camsys_composed_delay_enque(raw_dev, ctx, s_data);
 		}
+	}
+	/*EXT-ISP enqueue sv buffer first*/
+	if (mtk_cam_is_ext_isp(ctx) &&
+		ctx->composed_frame_seq_no == 1) {
+		mtk_cam_extisp_initial_sv_enque(ctx);
+		mtk_cam_extisp_sv_stream(ctx, 1);
 	}
 	return 0;
 }
@@ -5647,7 +5606,6 @@ void mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			     struct mtk_cam_request *req)
 {
 	unsigned int i, j;
-	unsigned long flags;
 
 	for (i = 0; i < cam->max_stream_num; i++) {
 		if (req->pipe_used & (1 << i)) {
@@ -5684,7 +5642,6 @@ void mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 			}
 			/*sensor setting after request drained check*/
 			if (ctx->used_raw_num) {
-				spin_lock_irqsave(&sensor_ctrl->drained_check_lock, flags);
 				drained_seq_no = atomic_read(&sensor_ctrl->last_drained_seq_no);
 				dev_dbg(cam->dev, "%s: feature pending(0x%x) active(0x%x)\n",
 							__func__,
@@ -5699,8 +5656,17 @@ void mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 					/* should exclude sensor set in below <= second request */
 					if (atomic_read(&sensor_ctrl->sensor_enq_seq_no) ==
 						drained_seq_no && drained_seq_no > 2)
+					#ifdef OPLUS_FEATURE_CAMERA_COMMON
+					{
+						dev_info(cam->dev,
+								"[%s] sensor set align enque enq:%d\n",
+								__func__, drained_seq_no);
+					#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
-						mtk_cam_try_set_sensor_at_enque(req_stream_data);
+						mtk_cam_submit_kwork_in_sensorctrl(
+							sensor_ctrl->sensorsetting_wq,
+							sensor_ctrl);
+					}
 				} else if (mtk_cam_is_mstream(ctx)) {
 					req_stream_data = mtk_cam_req_get_s_data(req, stream_id, 1);
 					if (req_stream_data->frame_seq_no ==
@@ -5709,9 +5675,7 @@ void mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 							sensor_ctrl->sensorsetting_wq,
 							sensor_ctrl);
 				}
-				spin_unlock_irqrestore(&sensor_ctrl->drained_check_lock, flags);
 			}
-			req_stream_data = mtk_cam_req_get_s_data(req, stream_id, 0);
 			immediate_switch_sensor = mtk_cam_is_immediate_switch_req(req, stream_id);
 			/**
 			 * initial frame condition:
@@ -5736,10 +5700,6 @@ void mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 					done_work = &pipe_stream_data->meta1_done_work;
 					atomic_set(&done_work->is_queued, 0);
 					INIT_WORK(&done_work->work, mtk_cam_meta1_done_work);
-
-					done_work = &pipe_stream_data->extmeta_done_work;
-					atomic_set(&done_work->is_queued, 0);
-					INIT_WORK(&done_work->work, mtk_cam_extmeta_done_work);
 				}
 			}
 			if (!immediate_switch_sensor &&
@@ -5757,7 +5717,6 @@ void mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 				if (!immediate_switch_sensor &&
 				    ctx->sensor && MTK_CAM_INITIAL_REQ_SYNC == 0 &&
 					(ctx->pipe->feature_active == 0 ||
-					mtk_cam_is_ext_isp(ctx) ||
 					req_stream_data->frame_params.raw_param.hardware_scenario
 					== MTKCAM_IPI_HW_PATH_OFFLINE_SRT_DCIF_STAGGER) &&
 					req_stream_data->frame_seq_no == 2) {
@@ -6512,41 +6471,26 @@ int mtk_cam_dev_config(struct mtk_cam_ctx *ctx, bool streaming, bool config_pipe
 			return -EINVAL;
 		}
 		if (ctx->ext_isp_meta_off || ctx->ext_isp_pureraw_off) {
-			int off_sv_pureraw, off_sv_meta, sv_i, padidx;
-
-			for (sv_i = MTKCAM_SUBDEV_CAMSV_START;
-			sv_i < MTKCAM_SUBDEV_CAMSV_END; sv_i++) {
-				if (ctx->pipe->enabled_raw & (1 << sv_i)) {
-					padidx = ctx->cam->sv.pipelines
-					[sv_i - MTKCAM_SUBDEV_CAMSV_START]
-					.seninf_padidx;
-					if (padidx == PAD_SRC_RAW0)
-						off_sv_pureraw = sv_i;
-					else if (padidx == PAD_SRC_GENERAL0)
-						off_sv_meta = sv_i;
-				}
-			}
 			ctx->pipe->enabled_raw &= ~idle_pipes;
 			if (ctx->ext_isp_meta_off && ctx->ext_isp_pureraw_off) {
-				idle_pipes = idle_pipes & (~(1 << off_sv_meta));
-				idle_pipes = idle_pipes & (~(1 << off_sv_pureraw));
-				ctx->cam->sv.pipelines[off_sv_pureraw -
+				idle_pipes = idle_pipes & (~(1 << MTKCAM_SUBDEV_CAMSV_1));
+				idle_pipes = idle_pipes & (~(1 << MTKCAM_SUBDEV_CAMSV_0));
+				ctx->cam->sv.pipelines[MTKCAM_SUBDEV_CAMSV_0 -
 					MTKCAM_SUBDEV_CAMSV_START].is_occupied = 0;
-				ctx->cam->sv.pipelines[off_sv_meta -
+				ctx->cam->sv.pipelines[MTKCAM_SUBDEV_CAMSV_1 -
 					MTKCAM_SUBDEV_CAMSV_START].is_occupied = 0;
 			} else if (ctx->ext_isp_meta_off) {
-				idle_pipes = idle_pipes & (~(1 << off_sv_meta));
-				ctx->cam->sv.pipelines[off_sv_meta -
+				idle_pipes = idle_pipes & (~(1 << MTKCAM_SUBDEV_CAMSV_1));
+				ctx->cam->sv.pipelines[MTKCAM_SUBDEV_CAMSV_1 -
 					MTKCAM_SUBDEV_CAMSV_START].is_occupied = 0;
 			} else if (ctx->ext_isp_pureraw_off) {
-				idle_pipes = idle_pipes & (~(1 << off_sv_pureraw));
-				ctx->cam->sv.pipelines[off_sv_pureraw -
+				idle_pipes = idle_pipes & (~(1 << MTKCAM_SUBDEV_CAMSV_0));
+				ctx->cam->sv.pipelines[MTKCAM_SUBDEV_CAMSV_0 -
 					MTKCAM_SUBDEV_CAMSV_START].is_occupied = 0;
 			}
 			ctx->pipe->enabled_raw |= idle_pipes;
-			dev_info(cam->dev, "force raw (0x%x) sv pipes(0x%x), %d/%d",
-				ctx->pipe->enabled_raw, idle_pipes,
-				off_sv_pureraw, off_sv_meta);
+			dev_info(cam->dev, "force debug enable raw (0x%x) sv pipes(0x%x)",
+				ctx->pipe->enabled_raw, idle_pipes);
 		}
 	}
 
@@ -6780,9 +6724,6 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 	ctx->ext_isp_meta_off = 0;
 	ctx->ext_isp_pureraw_off = 0;
 	ctx->ext_isp_procraw_off = 0;
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	ctx->enabled_watchdog_pipe = 0;
-#endif
 	atomic_set(&ctx->running_s_data_cnt, 0);
 	init_completion(&ctx->session_complete);
 	init_completion(&ctx->m2m_complete);
@@ -6908,11 +6849,7 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 			continue;
 
 		if (*target_sd) {
-			#ifndef OPLUS_FEATURE_CAMERA_COMMON
 			dev_info(cam->dev, "duplicated subdevs!!!\n");
-			#else // OPLUS_FEATURE_CAMERA_COMMON
-			dev_info(cam->dev, "duplicated subdevs!!! (%s)\n", entity->name);
-			#endif // OPLUS_FEATURE_CAMERA_COMMON
 			goto fail_stop_pipeline;
 		}
 
@@ -6926,12 +6863,6 @@ struct mtk_cam_ctx *mtk_cam_start_ctx(struct mtk_cam_device *cam,
 
 fail_stop_pipeline:
 	media_pipeline_stop(entity);
-	#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	ctx->sensor = NULL;
-	ctx->seninf = NULL;
-	for (i = 0; i < MAX_PIPES_PER_STREAM; i++)
-		ctx->pipe_subdevs[i] = NULL;
-	#endif // OPLUS_FEATURE_CAMERA_COMMON
 fail_uninit_frame_done_wq:
 	destroy_workqueue(ctx->frame_done_wq);
 fail_uninit_composer_wq:
@@ -6981,7 +6912,6 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 	if (!cam->streaming_ctx) {
 		struct v4l2_subdev *sd;
 
-		#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		v4l2_device_for_each_subdev(sd, &cam->v4l2_dev) {
 			if (sd->entity.function == MEDIA_ENT_F_VID_IF_BRIDGE) {
 				int ret;
@@ -6999,29 +6929,6 @@ void mtk_cam_stop_ctx(struct mtk_cam_ctx *ctx, struct media_entity *entity)
 				sd->entity.pipe = NULL;
 			}
 		}
-		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
-		if (mtk_cam_is_ext_isp(ctx)) {
-			dev_info(cam->dev, "not to stream off seninf %s for preisp at stop ctx\n",
-				ctx->seninf->name);
-		} else {
-			v4l2_device_for_each_subdev(sd, &cam->v4l2_dev) {
-				if (sd->entity.function == MEDIA_ENT_F_VID_IF_BRIDGE) {
-					int ret;
-					ret = v4l2_subdev_call(sd, video, s_stream, 0);
-					if (ret)
-						dev_info(cam->dev,
-							 "failed to streamoff %s:%d\n",
-							 sd->name, ret);
-					sd->entity.stream_count = 0;
-					sd->entity.pipe = NULL;
-				} else if (sd->entity.function ==
-							MEDIA_ENT_F_CAM_SENSOR) {
-					sd->entity.stream_count = 0;
-					sd->entity.pipe = NULL;
-				}
-			}
-		}
-		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	}
 
 	drain_workqueue(ctx->composer_wq);
@@ -7235,7 +7142,7 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx)
 				2 + mtk_cam_feature_is_3_exposure(feature_active));
 		}
 		if (mtk_cam_is_ext_isp(ctx))
-			buf_require = 0;
+			buf_require = max(buf_require, 2);
 		if (mtk_cam_feature_is_time_shared(feature_active))
 			buf_require = max(buf_require, CAM_IMG_BUF_NUM);
 		if (mtk_cam_hw_is_dc(ctx)) {
@@ -7591,35 +7498,16 @@ int mtk_cam_ctx_stream_on(struct mtk_cam_ctx *ctx)
 			if (ret)
 				goto fail_img_buf_release;
 		}
-		if (!mtk_cam_is_ext_isp(ctx)) {
-			ret = v4l2_subdev_call(ctx->seninf, video, s_stream, 1);
-			if (ret) {
-				dev_info(cam->dev, "failed to stream on seninf %s:%d\n",
-					 ctx->seninf->name, ret);
-				goto fail_img_buf_release;
-			}
-		} else {
-			if (ctx->sensor)
-				dev_info(cam->dev, "Preisp with sensor not-to stream on seninf %s\n",
-					 ctx->seninf->name);
-			else {
-				dev_info(cam->dev, "Preisp UT stream on seninf %s\n",
-					 ctx->seninf->name);
-				ret = v4l2_subdev_call(ctx->seninf, video, s_stream, 1);
-				if (ret) {
-					dev_info(cam->dev, "failed to stream on seninf %s:%d\n",
-						 ctx->seninf->name, ret);
-					goto fail_img_buf_release;
-				}
-			}
+
+		ret = v4l2_subdev_call(ctx->seninf, video, s_stream, 1);
+		if (ret) {
+			dev_info(cam->dev, "failed to stream on seninf %s:%d\n",
+				 ctx->seninf->name, ret);
+			goto fail_img_buf_release;
 		}
 	} else {
-		spin_lock(&ctx->processing_buffer_list.lock);
 		ctx->processing_buffer_list.cnt = 0;
-		spin_unlock(&ctx->processing_buffer_list.lock);
-		spin_lock(&ctx->composed_buffer_list.lock);
 		ctx->composed_buffer_list.cnt = 0;
-		spin_unlock(&ctx->composed_buffer_list.lock);
 		dev_dbg(cam->dev, "[M2M] reset processing_buffer_list.cnt & composed_buffer_list.cnt\n");
 	}
 	if (ctx->used_raw_num) {
@@ -7787,6 +7675,9 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 	unsigned int i, enabled_sv = 0;
 	int ret;
 	int feature = 0;
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+	unsigned int hw_scen = 0;
+#endif /*NO OPLUS_FEATURE_CAMERA_COMMON*/
 
 
 	if (!ctx->streaming) {
@@ -7845,6 +7736,7 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 			__func__, ctx->stream_id);
 	}
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	if (mtk_cam_feature_is_stagger(feature)) {
 		unsigned int hw_scen = mtk_raw_get_hdr_scen_id(ctx);
 
@@ -7859,6 +7751,17 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 		}
 	} else if (mtk_cam_is_with_w_channel(ctx)) {
 		unsigned int hw_scen = (1 << MTKCAM_SV_SPECIAL_SCENARIO_ADDITIONAL_RAW);
+#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+	// If stagger, need to turn off cam sv in advanced
+	if (mtk_cam_feature_is_stagger(feature))
+		hw_scen = mtk_raw_get_hdr_scen_id(ctx);
+	else if (mtk_cam_is_with_w_channel(ctx))
+		hw_scen = (1 << MTKCAM_SV_SPECIAL_SCENARIO_ADDITIONAL_RAW);
+	else if (mtk_cam_hw_is_dc(ctx))
+		hw_scen = (1 << MTKCAM_IPI_HW_PATH_OFFLINE_SRT_DCIF_STAGGER);
+
+	if (hw_scen) {
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 		for (i = MTKCAM_SUBDEV_CAMSV_START; i < MTKCAM_SUBDEV_CAMSV_END; i++) {
 			if (ctx->pipe && ctx->pipe->enabled_raw & (1 << i)) {
@@ -7938,13 +7841,6 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 	}
 	if (mtk_cam_is_ext_isp(ctx)) {
 		mtk_cam_extisp_sv_stream(ctx, 0);
-		for (i = MTKCAM_SUBDEV_CAMSV_START; i < MTKCAM_SUBDEV_CAMSV_END; i++) {
-			if (ctx->pipe->enabled_raw & (1 << i)) {
-				cam->sv.pipelines[i - MTKCAM_SUBDEV_CAMSV_START].is_occupied = 0;
-				ctx->pipe->enabled_raw &= ~(1 << i);
-				enabled_sv |= (1 << i);
-			}
-		}
 	}
 
 	/* reset dvfs/qos */
@@ -7958,20 +7854,15 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 			ret = v4l2_subdev_call(&ctx->pipe->subdev, video, s_stream, 0);
 	}
 
-	for (i = 0; i < MAX_MRAW_PIPES_PER_STREAM && ctx->mraw_pipe[i] ; i++) {
-			ret = v4l2_subdev_call(&ctx->mraw_pipe[i]->subdev,
-					video, s_stream, 0);
-	}
-
 	for (i = 0; i < MAX_SV_PIPES_PER_STREAM && ctx->sv_pipe[i]; i++) {
 		ret = v4l2_subdev_call(&ctx->sv_pipe[i]->subdev,
 			video, s_stream, 0);
 	}
 
-	if (mtk_cam_feature_is_stagger(feature) ||
-		mtk_cam_feature_is_time_shared(feature) ||
-		mtk_cam_is_with_w_channel(ctx) ||
-		mtk_cam_is_ext_isp(ctx)) {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+ 	if (mtk_cam_feature_is_stagger(feature) ||
+ 		mtk_cam_feature_is_time_shared(feature) ||
+ 		mtk_cam_is_with_w_channel(ctx)) {
 		for (i = MTKCAM_SUBDEV_CAMSV_START ; i < MTKCAM_SUBDEV_CAMSV_END ; i++) {
 			if (enabled_sv & (1 << i)) {
 				camsv_dev = get_camsv_dev(cam, &cam->sv.pipelines[
@@ -7980,31 +7871,29 @@ int mtk_cam_ctx_stream_off(struct mtk_cam_ctx *ctx)
 			}
 		}
 	}
-
-	/* make sure all raw/camsv/mraw irq is disabled */
-	if (!mtk_cam_feature_is_m2m(feature)) {
-		if (!mtk_cam_is_ext_isp(ctx)) {
-			ret = v4l2_subdev_call(ctx->seninf, video, s_stream, 0);
-			if (ret) {
-				dev_info(cam->dev, "failed to stream off %s:%d\n",
-					 ctx->seninf->name, ret);
-				return -EPERM;
-			}
-		} else {
-			if (ctx->sensor)
-				dev_info(cam->dev, "Preisp with sensor not-to stream off seninf %s\n",
-					 ctx->seninf->name);
-			else {
-				dev_info(cam->dev, "Preisp UT stream off seninf %s\n",
-					 ctx->seninf->name);
-				ret = v4l2_subdev_call(ctx->seninf, video, s_stream, 0);
-				if (ret) {
-					dev_info(cam->dev, "failed to stream on seninf %s:%d\n",
-						 ctx->seninf->name, ret);
-					return -EPERM;
-				}
-			}
+#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+	for (i = MTKCAM_SUBDEV_CAMSV_START ; i < MTKCAM_SUBDEV_CAMSV_END ; i++) {
+		if (enabled_sv & (1 << i)) {
+			camsv_dev = get_camsv_dev(cam, &cam->sv.pipelines[
+				i - MTKCAM_SUBDEV_CAMSV_START]);
+			pm_runtime_put_sync(camsv_dev->dev);
 		}
+	}
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
+
+	for (i = 0; i < MAX_MRAW_PIPES_PER_STREAM && ctx->mraw_pipe[i] ; i++) {
+			ret = v4l2_subdev_call(&ctx->mraw_pipe[i]->subdev,
+					video, s_stream, 0);
+	}
+
+    /* make sure all raw/camsv/mraw irq is disabled */
+    if (!mtk_cam_feature_is_m2m(feature)) {
+        ret = v4l2_subdev_call(ctx->seninf, video, s_stream, 0);
+        if (ret) {
+            dev_info(cam->dev, "failed to stream off %s:%d\n",
+                 ctx->seninf->name, ret);
+            return -EPERM;
+        }
     }
 
 	if (ctx->img_buf_pool.working_img_buf_size > 0)
@@ -8389,15 +8278,6 @@ static void mtk_cam_ctx_watchdog_worker(struct work_struct *work)
 	}
 
 	raw = get_master_raw_dev(ctx->cam, ctx->pipe);
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if (!raw) {
-		dev_info(ctx->cam->dev,
-			"%s:ctx(%d):stop watchdog task for no raw ctx\n",
-			__func__, ctx->stream_id);
-		complete(&watchdog_data->watchdog_complete);
-		return;
-	}
-#endif /* OPLUS_FEATURE_CAMERA_COMMON */
 	timeout = mtk_cam_seninf_check_timeout(seninf,
 					       watchdog_data->watchdog_time_diff_ns);
 	if (last_vsync_count == raw->vsync_count)
@@ -8959,20 +8839,9 @@ void mtk_ctx_watchdog_stop(struct mtk_cam_ctx *ctx, int pipe_id, int ctx_streamo
 	dev_info(ctx->cam->dev, "%s:ctx/pipe_id(%d/%d):stop the watchdog\n",
 			__func__, ctx->stream_id, pipe_id);
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	spin_lock_irqsave(&ctx->watchdog_pipe_lock, flags);
-	ctx->enabled_watchdog_pipe &= ~(1 << pipe_id);
-	spin_unlock_irqrestore(&ctx->watchdog_pipe_lock, flags);
-	cancel_work_sync(&ctx->watchdog_data[pipe_id].watchdog_work);
-#endif /* OPLUS_FEATURE_CAMERA_COMMON */
-
 	/* Prevent from ctx stopping in the middle of last watchdog worker */
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	if (ctx_streamoff)
-#else
 	if (ctx_streamoff && wait_for_completion_timeout(&watchdog_data->watchdog_complete,
 					msecs_to_jiffies(2)) == 0)
-#endif
 		dev_info(ctx->cam->dev,
 			"%s:ctx/pipe_id(%d/%d): complete timeout\n",
 			__func__, ctx->stream_id, pipe_id);
@@ -8982,9 +8851,7 @@ void mtk_ctx_watchdog_stop(struct mtk_cam_ctx *ctx, int pipe_id, int ctx_streamo
 			__func__, ctx->stream_id, pipe_id);
 
 	spin_lock_irqsave(&ctx->watchdog_pipe_lock, flags);
-#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	ctx->enabled_watchdog_pipe &= ~(1 << pipe_id);
-#endif /* OPLUS_FEATURE_CAMERA_COMMON */
 	watchdog_data->ctx = NULL;
 	/* Stop timer when the last raw watchdog stop */
 	if (is_raw_subdev(pipe_id) && !(ctx->enabled_watchdog_pipe & raw_pipe_mask))
@@ -9011,6 +8878,8 @@ static void mtk_cam_ctx_init(struct mtk_cam_ctx *ctx,
 
 	ctx->used_raw_num = 0;
 	ctx->used_raw_dev = 0;
+	ctx->processing_buffer_list.cnt = 0;
+	ctx->composed_buffer_list.cnt = 0;
 	ctx->is_first_cq_done = 0;
 	ctx->cq_done_status = 0;
 	ctx->session_created = 0;
@@ -9064,12 +8933,7 @@ static void mtk_cam_ctx_init(struct mtk_cam_ctx *ctx,
 	spin_lock_init(&ctx->processing_img_buffer_list.lock);
 	spin_lock_init(&ctx->watchdog_pipe_lock);
 	mutex_init(&ctx->cleanup_lock);
-	spin_lock(&ctx->processing_buffer_list.lock);
-	ctx->processing_buffer_list.cnt = 0;
-	spin_unlock(&ctx->processing_buffer_list.lock);
-	spin_lock(&ctx->composed_buffer_list.lock);
-	ctx->composed_buffer_list.cnt = 0;
-	spin_unlock(&ctx->composed_buffer_list.lock);
+
 	mtk_ctx_watchdog_init(ctx);
 }
 

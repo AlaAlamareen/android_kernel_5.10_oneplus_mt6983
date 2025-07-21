@@ -11,11 +11,6 @@
 ******************************************************************/
 #include "oplus_display_mtk_debug.h"
 #include "oplus_display_panel.h"
-#include "mtk_panel_ext.h"
-#include "mtk_drm_mmp.h"
-#include "mtk_drm_crtc.h"
-#include "mtk_drm_drv.h"
-#include "mtk_debug.h"
 
 extern bool g_mobile_log;
 extern bool g_detail_log;
@@ -109,58 +104,8 @@ int oplus_display_set_limit_fps(void *buf)
 	return 0;
 }
 
-void oplus_printf_backlight_log(struct drm_crtc *crtc, unsigned int bl_lvl) {
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
-	struct mtk_panel_params *params = mtk_crtc->panel_ext->params;
-	struct timespec64 now;
-	struct tm broken_time;
-	static time64_t time_last = 0;
-	struct backlight_log *bl_log;
-	int i = 0;
-	int len = 0;
-	char backlight_log_buf[1024];
 
-
-	if (!comp) {
-		DDPPR_ERR("failed to get comp\n");
-		return;
-	}
-
-	ktime_get_real_ts64(&now);
-	time64_to_tm(now.tv_sec, 0, &broken_time);
-	if (now.tv_sec - time_last >= 60) {
-		pr_info("<%s> dsi_display_set_backlight time:%02d:%02d:%02d.%03ld,bl_lvl:%d\n",
-				params->vendor, broken_time.tm_hour, broken_time.tm_min,
-				broken_time.tm_sec, now.tv_nsec / 1000000, bl_lvl);
-		time_last = now.tv_sec;
-	}
-
-	if (comp->id == DDP_COMPONENT_DSI1) {
-		bl_log = &oplus_bl_log[DISPLAY_SECONDARY];
-	} else {
-		bl_log = &oplus_bl_log[DISPLAY_PRIMARY];
-	}
-
-
-	bl_log->backlight[bl_log->bl_count] = bl_lvl;
-	bl_log->past_times[bl_log->bl_count] = now;
-	bl_log->bl_count++;
-	if (bl_log->bl_count >= BACKLIGHT_CACHE_MAX) {
-		bl_log->bl_count = 0;
-		memset(backlight_log_buf, 0, sizeof(backlight_log_buf));
-		for (i = 0; i < BACKLIGHT_CACHE_MAX; i++) {
-			time64_to_tm(bl_log->past_times[i].tv_sec, 0, &broken_time);
-			len += snprintf(backlight_log_buf + len, sizeof(backlight_log_buf) - len,
-				"%02d:%02d:%02d.%03ld:%d,", broken_time.tm_hour, broken_time.tm_min,
-				broken_time.tm_sec, bl_log->past_times[i].tv_nsec / 1000000, bl_log->backlight[i]);
-		}
-		pr_info("<%s> len:%d dsi_display_set_backlight %s\n", params->vendor, len, backlight_log_buf);
-	}
-}
-EXPORT_SYMBOL(oplus_printf_backlight_log);
-
-MODULE_AUTHOR("Xiaolei Gao <gaoxiaolei@oplus.com>");
+MODULE_AUTHOR("Xiaolei Gao");
 MODULE_DESCRIPTION("OPLUS debug device");
 MODULE_LICENSE("GPL v2");
 

@@ -35,6 +35,10 @@
 
 static struct mtk_cam_seninf_ops *_seninf_ops = &mtk_csi_phy_3_0;
 
+
+
+
+
 #define SET_DI_CTRL(ptr, s, vc) do { \
 	SENINF_BITS(ptr, SENINF_CSI2_S##s##_DI_CTRL, \
 			RG_CSI2_S##s##_DT_SEL, vc->dt); \
@@ -345,13 +349,6 @@ static int mtk_cam_seninf_set_top_mux_ctrl(struct seninf_ctx *ctx,
 {
 	void *pSeninf = ctx->reg_if_top;
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	struct seninf_core *core;
-
-	core = dev_get_drvdata(ctx->dev->parent);
-	mutex_lock(&core->mutex);
-#endif // OPLUS_FEATURE_CAMERA_COMMON
-
 	switch (mux_idx) {
 	case SENINF_MUX1:
 		SENINF_BITS(pSeninf, SENINF_TOP_MUX_CTRL_0,
@@ -446,11 +443,6 @@ static int mtk_cam_seninf_set_top_mux_ctrl(struct seninf_ctx *ctx,
 		dev_info(ctx->dev, "invalid mux_idx %d\n", mux_idx);
 		return -EINVAL;
 	}
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	mutex_unlock(&core->mutex);
-#endif // OPLUS_FEATURE_CAMERA_COMMON
-
 // #if LOG_MORE
 	dev_info(ctx->dev,
 		"TOP_MUX_CTRL_0(0x%x) TOP_MUX_CTRL_1(0x%x) TOP_MUX_CTRL_2(0x%x) TOP_MUX_CTRL_3(0x%x) TOP_MUX_CTRL_4(0x%x) TOP_MUX_CTRL_5(0x%x)\n",
@@ -3462,24 +3454,6 @@ static int mtk_cam_seninf_debug(struct seninf_ctx *ctx)
 	return ret;
 }
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-static int mtk_cam_get_csi_irq_status(struct seninf_ctx *ctx)
-{
-	void *base_csi;
-	int ret = 0;
-
-	if (!ctx->streaming) {
-		return 0;
-	}
-
-	base_csi = ctx->reg_if_csi2[(uint32_t)ctx->seninfIdx];
-	ret = SENINF_READ_REG(base_csi, SENINF_CSI2_IRQ_STATUS);
-//	dev_info(ctx->dev,"SENINF%d_CSI2_IRQ_STATUS(0x%x)\n", ctx->seninfIdx, ret);
-	SENINF_WRITE_REG(base_csi, SENINF_CSI2_IRQ_STATUS, 0xffffffff);
-	return ret;
-}
-#endif
-
 static ssize_t mtk_cam_seninf_show_err_status(struct device *dev,
 				   struct device_attribute *attr,
 		char *buf)
@@ -4098,7 +4072,4 @@ struct mtk_cam_seninf_ops mtk_csi_phy_3_0 = {
 	.cam_mux_num = 23,
 	.pref_mux_num = 17,
 	._show_err_status = mtk_cam_seninf_show_err_status,
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	._get_csi_irq_status = mtk_cam_get_csi_irq_status,
-#endif
 };

@@ -3230,7 +3230,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		}
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 2730000;
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 3000000;
 		break;
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
 		switch (*feature_data) {

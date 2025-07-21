@@ -19,7 +19,6 @@
 #include <linux/device.h>
 #include <linux/firmware.h>
 #include <linux/slab.h>
-#include <linux/string.h>
 #include <linux/version.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -29,7 +28,6 @@
 #include <linux/leds.h>
 #include <soc/oplus/system/oplus_project.h>
 #include <linux/workqueue.h>
-#include <linux/regulator/consumer.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 #include <mt-plat/mtk_boot.h>
 #else
@@ -43,7 +41,6 @@ static int max_led = 0;
 static int workqueue_flag = 0;
 static int dec_flag = 1;
 static int ledbri[5] = {0};
-static int led_esd_color[3][4] = {0};
 
 static int aw210xx_hw_enable(struct aw210xx *aw210xx, bool flag);
 static int aw210xx_led_init(struct aw210xx *aw210xx);
@@ -110,11 +107,9 @@ static int aw210xx_i2c_write(struct aw210xx *aw210xx,
 		ret = i2c_smbus_write_byte_data(aw210xx->i2c,
 				reg_addr, reg_data);
 		if (ret < 0)
-			AW_ERR("i2c_write fail cnt=%d ret=%d addr=0x%x data=0x%x\n", cnt, ret, reg_addr, reg_data);
-		else {
-			AW_ERR("i2c_write suc cnt=%d ret=%d addr=0x%x data=0x%x\n", cnt, ret, reg_addr, reg_data);
+			AW_ERR("i2c_write cnt=%d ret=%d\n", cnt, ret);
+		else
 			break;
-		}
 		cnt++;
 		usleep_range(AW_I2C_RETRY_DELAY * 1000,
 				AW_I2C_RETRY_DELAY * 1000 + 500);
@@ -132,10 +127,9 @@ static int aw210xx_i2c_read(struct aw210xx *aw210xx,
 	while (cnt < AW_I2C_RETRIES) {
 		ret = i2c_smbus_read_byte_data(aw210xx->i2c, reg_addr);
 		if (ret < 0) {
-			AW_ERR("i2c_read fail cnt=%d ret=%d addr=0x%x\n", cnt, ret, reg_addr);
+			AW_ERR("i2c_read cnt=%d ret=%d\n", cnt, ret);
 		} else {
 			*reg_data = ret;
-			AW_ERR("i2c_read suc cnt=%d ret=%d addr=0x%x\n", cnt, ret, reg_addr);
 			break;
 		}
 		cnt++;
@@ -384,8 +378,6 @@ void aw210xx_current_set(struct aw210xx *aw210xx)
 static void aw210xx_brightness(struct aw210xx *led)
 {
 	int i = 0;
-	int color[4] = {0};
-	int led_brightness = 0;
 	AW_LOG("id = %d brightness = %d\n", led->id, led->cdev.brightness);
 	if (led->id > 5) {
 		AW_LOG("id = %d ,return\n", led->id);
@@ -418,187 +410,34 @@ static void aw210xx_brightness(struct aw210xx *led)
 		else
 			led->pdata->led->rgb_isnk_on &= ~B_ISNK_ON_MASK;
 		break;
-	default:
-		AW_LOG("no define id = %d brightness = %d\n", led->id, led->cdev.brightness);
-		return;
 	}
 	AW_LOG("rgb_isnk_on = 0x%x\n", led->pdata->led->rgb_isnk_on);
 	if (led->cdev.brightness > 0) {
-		led->pdata->led->power_change_state |= (1 << (led->id));
-		mutex_lock(&led->pdata->led->lock);
 		if (!led->pdata->led->led_enable && led->pdata->led->rgb_isnk_on) {
 			if (aw210xx_hw_enable(led->pdata->led, true)) {
 				AW_LOG("aw210xx hw enable failed");
 			}
 		}
-		mutex_unlock(&led->pdata->led->lock);
-		led->pdata->led->power_change_state &= ~(1 << (led->id));
 	} else {
-		led->pdata->led->power_change_state |= (1 << (led->id));
-		mutex_lock(&led->pdata->led->lock);
 		if (led->pdata->led->led_enable && !(led->pdata->led->rgb_isnk_on)) {
 			if (aw210xx_hw_enable(led->pdata->led, false)) {
 				AW_LOG("aw210xx hw disable failed");
 			}
 		}
-		mutex_unlock(&led->pdata->led->lock);
-		led->pdata->led->power_change_state &= ~(1 << (led->id));
 	}
-
-	if (led->cdev.brightness == 0) {
-		usleep_range(10000, 10500);
+	if (led->id == 0 && dec_flag) {
+		led->cdev.brightness = (led->cdev.brightness / 3) * 2;
+		AW_LOG("id = %d set brightness = %d\n", led->id, led->cdev.brightness);
+	} else if (led->id == 1 && dec_flag) {
+		led->cdev.brightness = (led->cdev.brightness / 3) * 2;
+		AW_LOG("id = %d set brightness = %d\n", led->id, led->cdev.brightness);
+	} else if (led->id == 2 && dec_flag) {
+		led->cdev.brightness = (led->cdev.brightness / 3) * 1;
+		AW_LOG("id = %d set brightness = %d\n", led->id, led->cdev.brightness);
 	}
-
-	if (!led->pdata->led->led_enable) {
-		AW_LOG("aw210xx hw is disable");
-		goto out;
-	}
-
-	/*aw210xx led music mode set up*/
-	if (led->pdata->led_mode == AW210XX_LED_MUSICMODE || led->pdata->led_mode == AW210XX_LED_NEW_ALWAYSON) {
-		led->br_res = BR_RESOLUTION_9_AND_3_BIT;
-		aw210xx_br_res_set(led);
-
-		if (led->cdev.brightness > 16) {
-			led_brightness = (led->cdev.brightness * led->cdev.brightness) / 16;
-		} else {
-			led_brightness = led->cdev.brightness;
-		}
-
-		/* sbmd disable */
-		aw210xx_sbmd_set(led, false);
-		/*
-		aw210xx_i2c_write(led, AW210XX_REG_BR00H + 2 * led->id, 0xff & (led->pdata->br_brightness[0] >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR00L + 2 * led->id, 0xff & led->pdata->br_brightness[0]);
-		aw210xx_i2c_write(led, AW210XX_REG_BR03H + 2 * led->id, 0xff & (led->pdata->br_brightness[1] >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR03L + 2 * led->id, 0xff & led->pdata->br_brightness[1]);
-		aw210xx_i2c_write(led, AW210XX_REG_BR06H + 2 * led->id, 0xff & (led->pdata->br_brightness[2] >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR06L + 2 * led->id, 0xff & led->pdata->br_brightness[2]);
-		aw210xx_i2c_write(led, AW210XX_REG_BR09H + 2 * led->id, 0xff & (led->pdata->br_brightness[3] >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR09L + 2 * led->id, 0xff & led->pdata->br_brightness[3]);
-		*/
-		aw210xx_i2c_write(led, AW210XX_REG_BR00H + 2 * led->id, 0xff & (led_brightness >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR00L + 2 * led->id, 0xff & led_brightness);
-		aw210xx_i2c_write(led, AW210XX_REG_BR03H + 2 * led->id, 0xff & (led_brightness >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR03L + 2 * led->id, 0xff & led_brightness);
-		aw210xx_i2c_write(led, AW210XX_REG_BR06H + 2 * led->id, 0xff & (led_brightness >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR06L + 2 * led->id, 0xff & led_brightness);
-		aw210xx_i2c_write(led, AW210XX_REG_BR09H + 2 * led->id, 0xff & (led_brightness >> 8));
-		aw210xx_i2c_write(led, AW210XX_REG_BR09L + 2 * led->id, 0xff & led_brightness);
-		aw210xx_i2c_write(led, AW210XX_REG_ABMCFG, 0x01);
-
-		/*red led, green led max current is 20ma, blue led max current is 10ma*/
-		for (i = 0; i < led->pdata->led->led_groups_num; i++) {
-			if (led->id == 0) {
-				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
-			} else if (led->id == 1) {
-				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
-			} else if (led->id == 2) {
-				color[i] = (led->pdata->color[i]) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
-			}
-		}
-
-		if (led->pdata->led->led_groups_num == 2) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x40);
-			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
-		} else if (led->pdata->led->led_groups_num == 4) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, color[3]);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x40);
-			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
-		} else {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, color[3]);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x40);
-			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
-		}
-	} else if (led->pdata->led_mode == AW210XX_LED_INDIVIDUAL_CTL_BREATH) {
-		/*red led, green led max current is 20ma, blue led max current is 10ma*/
-		for (i = 0; i < led->pdata->led->led_groups_num; i++) {
-			if (led->id == 0) {
-				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
-			} else if (led->id == 1) {
-				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
-			} else if (led->id == 2) {
-				color[i] = (led->pdata->color[i]) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
-			}
-		}
-
-		led->br_res = BR_RESOLUTION_8BIT;
-		aw210xx_br_res_set(led);
-		/* sbmd enable */
-		aw210xx_sbmd_set(led, true);
-
-		if (led->pdata->led->led_groups_num == 2) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x47);
-			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
-		} else if (led->pdata->led->led_groups_num == 4) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, color[3]);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
-			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
-		} else {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, color[3]);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
-			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
-		}
-	} else {
-		if (led->id == 0) {
-			led_brightness = (led->cdev.brightness * 2) / 3;
-			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
-		} else if (led->id == 1) {
-			led_brightness = (led->cdev.brightness * 2) / 3;
-			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
-		} else if (led->id == 2) {
-			led_brightness = (led->cdev.brightness) / 3;
-			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
-		}
-
-		led->br_res = BR_RESOLUTION_8BIT;
-		aw210xx_br_res_set(led);
-		/* sbmd enable */
-		aw210xx_sbmd_set(led, true);
-
-		if (led->pdata->led->led_groups_num == 2) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x47);
-			AW_LOG("id = %d led_groups_num = %d\n", led->id, led->pdata->led->led_groups_num);
-		} else if (led->pdata->led->led_groups_num == 4) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
-			AW_LOG("id = %d led_groups_num = %d\n", led->id, led->pdata->led->led_groups_num);
-		} else {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
-			AW_LOG("id = %d led_groups_num = %d\n", led->id, led->pdata->led->led_groups_num);
-		}
-	}
+	aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led->cdev.brightness);
+	aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led->cdev.brightness);
+	aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x47);
 
 	/*aw210xx led cc mode set up*/
 	if (led->pdata->led_mode == AW210XX_LED_CCMODE) {
@@ -608,7 +447,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 	}
 
 	/*aw210xx led breath set up*/
-	if (led->pdata->led_mode == AW210XX_LED_BREATHMODE || led->pdata->led_mode == AW210XX_LED_INDIVIDUAL_CTL_BREATH) {
+	if (led->pdata->led_mode == AW210XX_LED_BREATHMODE) {
 		aw210xx_i2c_write(led, AW210XX_REG_ABMT0 ,
 				(led->pdata->rise_time_ms << 4 | led->pdata->hold_time_ms));
 		aw210xx_i2c_write(led, AW210XX_REG_ABMT1 ,
@@ -648,9 +487,8 @@ static void aw210xx_brightness(struct aw210xx *led)
 	/* update */
 	aw210xx_update(led);
 
-	AW_LOG("%s:  brightness[%d]=%x led_mode[%d]=%x \n",__func__,led->id,led_brightness,led->id,led->pdata->led_mode);
+	AW_LOG("%s:  brightness[%d]=%x led_mode[%d]=%x \n",__func__,led->id,led->cdev.brightness,led->id,led->pdata->led_mode);
 
-out:
 	if (led->cdev.brightness > 0 && !workqueue_flag) {
 		queue_delayed_work(led_default->aw210_led_wq, &led_default->aw210_led_work,LED_ESD_WORK_TIME * HZ);
 		workqueue_flag = 1;
@@ -670,45 +508,26 @@ static void aw210_work_func(struct work_struct *aw210_work)
 	int i = 0;
 	struct aw210xx *led = container_of(aw210_work, struct aw210xx,aw210_led_work.work);
 
-	AW_LOG("aw210_work_func enter\n");
+	ret = aw210xx_i2c_read(led, AW210XX_REG_GCCR, &val);
 
-	if (!led->pdata->led->power_change_state && led->pdata->led->led_enable) {
-		ret = aw210xx_i2c_read(led, AW210XX_REG_GCCR, &val);
-		if(!val) {
-			dev_notice(&led->i2c->dev, "%s AW210_REG_STATUS[%d]:[0x%x]\n",__func__,led->id,val);
-			led_default->esd_flag = true;
-			dec_flag = 0;
-			AW_LOG("aw210xx_led_init enter\n");
-			ret = aw210xx_led_init(led_default);
-			if (ret) {
-				dev_err(&led->i2c->dev, "%s reset failed :[%d]\n",__func__,ret);
-			}
-			for (i = 0; i < 3; i++) {
-				led_default -> id = i;
-				led_default->cdev.brightness = ledbri[i];
-				led_default->pdata->color[0] = led_esd_color[i][0];
-				led_default->pdata->color[1] = led_esd_color[i][1];
-				led_default->pdata->color[2] = led_esd_color[i][2];
-				led_default->pdata->color[3] = led_esd_color[i][3];
-				AW_LOG("cdev.brightness set to 0\n");
-				aw210xx_brightness(led_default);
-			}
-			led_default -> id = 0;
-			led_default->cdev.brightness = ledbri[0];
-			led_default->pdata->color[0] = led_esd_color[0][0];
-			led_default->pdata->color[1] = led_esd_color[0][1];
-			led_default->pdata->color[2] = led_esd_color[0][2];
-			led_default->pdata->color[3] = led_esd_color[0][3];
-		} else {
-			led_default->esd_flag = false;
-			dec_flag = 1;
-			led_default -> id = 0;
+	if(!val) {
+		dev_notice(&led->i2c->dev, "%s AW210_REG_STATUS[%d]:[0x%x]\n",__func__,led->id,val);
+		led_default->esd_flag = true;
+		dec_flag = 0;
+		ret = aw210xx_led_init(led_default);
+		if (ret) {
+			dev_err(&led->i2c->dev, "%s reset failed :[%d]\n",__func__,ret);
+		}
+		for (i = 0; i <3; i++) {
+			led_default -> id = i;
+			led_default->cdev.brightness = ledbri[i];
+			aw210xx_brightness(led_default);
 		}
 	} else {
-		AW_LOG("led is power off\n");
+		led_default->esd_flag = false;
+		dec_flag = 1;
+		led_default -> id = 0;
 	}
-
-
 	queue_delayed_work(led->aw210_led_wq, &led->aw210_led_work,3 * HZ);
 }
 
@@ -723,7 +542,6 @@ static void aw210xx_brightness_work(struct work_struct *work)
 	struct aw210xx *aw210xx = container_of(work, struct aw210xx,
 			brightness_work);
 
-	AW_LOG("aw210xx_brightness_work enter\n");
 	aw210xx_brightness(aw210xx);
 }
 
@@ -766,7 +584,6 @@ void aw210xx_chipen_set(struct aw210xx *aw210xx, bool flag)
 
 static int aw210xx_hw_enable(struct aw210xx *aw210xx, bool flag)
 {
-	int ret = 0;
 	AW_LOG("enter\n");
 
 	if (aw210xx && gpio_is_valid(aw210xx->enable_gpio) && gpio_is_valid(aw210xx->vbled_enable_gpio)) {
@@ -780,27 +597,6 @@ static int aw210xx_hw_enable(struct aw210xx *aw210xx, bool flag)
 		} else {
 			gpio_set_value_cansleep(aw210xx->enable_gpio, 0);
 			gpio_set_value_cansleep(aw210xx->vbled_enable_gpio, 0);
-			aw210xx->led_enable = false;
-		}
-	} else if (aw210xx && gpio_is_valid(aw210xx->enable_gpio) && (!IS_ERR_OR_NULL(aw210xx->vbled))) {
-		if (flag) {
-			gpio_set_value_cansleep(aw210xx->enable_gpio, 1);
-			AW_ERR("Enable the Regulator vbled.\n");
-			ret = regulator_enable(aw210xx->vbled);
-			if (ret) {
-				AW_ERR("Regulator vbled enable failed ret = %d\n", ret);
-			}
-			aw210xx_i2c_write(aw210xx, AW210XX_REG_RESET, 0x00);
-			usleep_range(2000, 2500);
-			aw210xx_led_init(aw210xx);
-			aw210xx->led_enable = true;
-		} else {
-			gpio_set_value_cansleep(aw210xx->enable_gpio, 0);
-			AW_ERR("Disable the Regulator vbled.\n");
-			ret = regulator_disable(aw210xx->vbled);
-			if (ret) {
-				AW_ERR("Regulator vbled disable failed ret = %d\n", ret);
-			}
 			aw210xx->led_enable = false;
 		}
 	} else {
@@ -1133,7 +929,8 @@ static ssize_t aw210xx_effect_store(struct device *dev,
 	rc = kstrtouint(buf, 10, &val);
 	if (rc < 0)
 		return rc;
-	if (val >= (sizeof(aw210xx_cfg_array) / sizeof(aw210xx_cfg_t))) {
+	if ((val >= (sizeof(aw210xx_cfg_array) /
+			sizeof(aw210xx_cfg_t))) || (val < 0)) {
 		pr_err("%s, store effect num error.\n", __func__);
 		return -EINVAL;
 	}
@@ -1247,158 +1044,6 @@ static ssize_t aw210xx_stdetect_show(struct device *dev,
 		len += snprintf(buf + len, PAGE_SIZE - len,
 					"OSST%d:%#x\n", i, reg_val[i]);
 	return len;
-}
-
-static ssize_t aw210xx_led_br_attr_show (struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct aw210xx *led = container_of(led_cdev, struct aw210xx, cdev);
-
-	return snprintf(buf, PAGE_SIZE, "%d,%d,%d,%d (max:4095)\n",led->pdata->br_brightness[0],led->pdata->br_brightness[1],
-			led->pdata->br_brightness[2], led->pdata->br_brightness[3]);
-}
-
-static ssize_t aw210xx_led_br_attr_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t cnt)
-{
-	unsigned long data = 0;
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct aw210xx *led = container_of(led_cdev, struct aw210xx, cdev);
-	char *delim = ",";
-	char *str = NULL;
-	char *p_buf, *tmp_buf;
-	int i = 0, led_br[4] = {0}, led_order[4] = {0};
-	ssize_t ret = -EINVAL;
-
-	AW_LOG("br input is %s\n", buf);
-
-	p_buf = kstrdup(buf, GFP_KERNEL);
-	tmp_buf = p_buf;
-	led_order[0] = led->pdata->led->led_allocation_order[0];
-	led_order[1] = led->pdata->led->led_allocation_order[1];
-	led_order[2] = led->pdata->led->led_allocation_order[2];
-	led_order[3] = led->pdata->led->led_allocation_order[3];
-	AW_LOG("[%d]: led_order=%d,%d,%d,%d.\n",led->id ,data, led_order[0],
-			led_order[1], led_order[2], led_order[3]);
-
-	for (i = 0; i < 4; i++) {
-		str = strsep(&tmp_buf, delim);
-		if (str == NULL) {
-			break;
-		}
-		ret = kstrtoul(str, 10, &data);
-		if (ret) {
-			kfree(p_buf);
-			return ret;
-		}
-		AW_LOG("[%d]: led_color=%d, i=%d.\n",led->id ,data, i);
-		led_br[i] = data;
-	}
-
-	if (i == 4) {
-		AW_LOG("[%d]: led_color=%d,%d,%d,%d.\n",led->id ,data, led_br[0],
-			led_br[1], led_br[2], led_br[3]);
-		mutex_lock(&led->pdata->led->lock);
-		led->pdata->br_brightness[0] = led_br[led_order[0]];
-		led->pdata->br_brightness[1] = led_br[led_order[1]];
-		led->pdata->br_brightness[2] = led_br[led_order[2]];
-		led->pdata->br_brightness[3] = led_br[led_order[3]];
-		mutex_unlock(&led->pdata->led->lock);
-		AW_LOG("[%d]: led_br_brightness=%d,%d,%d,%d\n",led->id, led->pdata->br_brightness[0], led->pdata->br_brightness[1],
-			led->pdata->br_brightness[2], led->pdata->br_brightness[3]);
-	} else {
-		AW_LOG("[%d]: input error.\n",led->id);
-	}
-	kfree(p_buf);
-	return cnt;
-}
-
-static ssize_t aw210xx_led_color_attr_show (struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct aw210xx *led = container_of(led_cdev, struct aw210xx, cdev);
-
-	return snprintf(buf, PAGE_SIZE, "%d,%d,%d,%d (max:255)\n",led->pdata->color[0], led->pdata->color[1],
-			led->pdata->color[2], led->pdata->color[3]);
-}
-
-static ssize_t aw210xx_led_color_attr_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t cnt)
-{
-	unsigned long data = 0;
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct aw210xx *led = container_of(led_cdev, struct aw210xx, cdev);
-	char *delim = ",";
-	char *str = NULL;
-	char *p_buf, *tmp_buf;
-	int i = 0, led_color[4] = {0}, led_order[4] = {0};
-	ssize_t ret = -EINVAL;
-
-	AW_LOG("color input is %s\n", buf);
-
-	p_buf = kstrdup(buf, GFP_KERNEL);
-	tmp_buf = p_buf;
-	led_order[0] = led->pdata->led->led_allocation_order[0];
-	led_order[1] = led->pdata->led->led_allocation_order[1];
-	led_order[2] = led->pdata->led->led_allocation_order[2];
-	led_order[3] = led->pdata->led->led_allocation_order[3];
-	AW_LOG("[%d]: led_order=%d,%d,%d,%d.\n",led->id ,data, led_order[0],
-			led_order[1], led_order[2], led_order[3]);
-
-	for (i = 0; i < 4; i++) {
-		str = strsep(&tmp_buf, delim);
-		if (str == NULL) {
-			break;
-		}
-		ret = kstrtoul(str, 10, &data);
-		if (ret) {
-			kfree(p_buf);
-			return ret;
-		}
-		AW_LOG("[%d]: led_color=%d, i=%d.\n",led->id ,data, i);
-		led_color[i] = data;
-	}
-
-	if (i == 4) {
-		AW_LOG("[%d]: led_color=%d,%d,%d,%d.\n",led->id ,data, led_color[0],
-				led_color[1], led_color[2], led_color[3]);
-		mutex_lock(&led->pdata->led->lock);
-		led->pdata->color[0] = led_color[led_order[0]];
-		led->pdata->color[1] = led_color[led_order[1]];
-		led->pdata->color[2] = led_color[led_order[2]];
-		led->pdata->color[3] = led_color[led_order[3]];
-		led_esd_color[led->id][0] = led->pdata->color[0];
-		led_esd_color[led->id][1] = led->pdata->color[1];
-		led_esd_color[led->id][2] = led->pdata->color[2];
-		led_esd_color[led->id][3] = led->pdata->color[3];
-		mutex_unlock(&led->pdata->led->lock);
-		AW_LOG("[%d]: led_color=%d,%d,%d,%d (max:255)\n", led->id, led->pdata->color[0], led->pdata->color[1],
-				led->pdata->color[2], led->pdata->color[3]);
-	} else {
-		AW_LOG("[%d]: input error.\n",led->id);
-	}
-	kfree(p_buf);
-	return cnt;
-}
-
-static ssize_t aw210xx_led_num_attr_show (struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct aw210xx *led = container_of(led_cdev, struct aw210xx, cdev);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n",led->pdata->led->led_groups_num);
-}
-
-static ssize_t aw210xx_led_color_ratio_attr_show (struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct aw210xx *led = container_of(led_cdev, struct aw210xx, cdev);
-
-	return snprintf(buf, PAGE_SIZE, "%d,%d\n",led->color_ratio[0], led->color_ratio[1]);
 }
 
 static ssize_t aw210xx_led_ton_attr_show (struct device *dev,
@@ -1545,10 +1190,6 @@ static DEVICE_ATTR(rgbcolor, 0664, NULL, aw210xx_rgbcolor_store);
 static DEVICE_ATTR(singleled, 0664, NULL, aw210xx_singleled_store);
 static DEVICE_ATTR(opdetect, 0664, aw210xx_opdetect_show, NULL);
 static DEVICE_ATTR(stdetect, 0664, aw210xx_stdetect_show, NULL);
-static DEVICE_ATTR(br, 0664, aw210xx_led_br_attr_show, aw210xx_led_br_attr_store);
-static DEVICE_ATTR(color, 0664, aw210xx_led_color_attr_show, aw210xx_led_color_attr_store);
-static DEVICE_ATTR(led_num, 0664, aw210xx_led_num_attr_show, NULL);
-static DEVICE_ATTR(color_ratio, 0664, aw210xx_led_color_ratio_attr_show, NULL);
 static DEVICE_ATTR(ton, 0664, aw210xx_led_ton_attr_show, aw210xx_led_ton_attr_store);
 static DEVICE_ATTR(toff, 0664, aw210xx_led_toff_attr_show, aw210xx_led_toff_attr_store);
 static DEVICE_ATTR(tr1, 0664, aw210xx_led_tr1_attr_show, aw210xx_led_tr1_attr_store);
@@ -1563,10 +1204,6 @@ static struct attribute *aw210xx_attributes[] = {
 	&dev_attr_singleled.attr,
 	&dev_attr_opdetect.attr,
 	&dev_attr_stdetect.attr,
-	&dev_attr_br.attr,
-	&dev_attr_color.attr,
-	&dev_attr_led_num.attr,
-	&dev_attr_color_ratio.attr,
 	&dev_attr_ton.attr,
 	&dev_attr_toff.attr,
 	&dev_attr_tr1.attr,
@@ -1607,7 +1244,6 @@ static int aw210xx_parse_led_cdev(struct aw210xx *aw210xx,
 	struct aw210xx *led;
 	struct aw210xx_platform_data *pdata;
 	int rc = -1, parsed_leds = 0;
-	int color_ratio[2] = {0};
 	struct device_node *temp;
 
 	AW_LOG("enter\n");
@@ -1641,22 +1277,6 @@ static int aw210xx_parse_led_cdev(struct aw210xx *aw210xx,
 			dev_err(&led->i2c->dev,
 				"Failure reading id, rc = %d\n", rc);
 			goto free_pdata;
-		}
-
-		rc = of_property_read_u32_array(temp, "aw210xx,color_ratio", color_ratio, 2);
-		if (rc) {
-			dev_err(&led->i2c->dev,
-				"Failure reading color_ratio, rc = %d\n", rc);
-			if (led->id < 2) {
-				led->color_ratio[0] = 2;
-				led->color_ratio[1] = 3;
-			} else {
-				led->color_ratio[0] = 1;
-				led->color_ratio[1] = 3;
-			}
-		} else {
-			led->color_ratio[0] = color_ratio[0];
-			led->color_ratio[1] = color_ratio[1];
 		}
 
 		rc = of_property_read_u32(temp, "aw210xx,imax",
@@ -1774,9 +1394,6 @@ static int aw210xx_led_change_mode(struct aw210xx *led,
 		case AW210XX_LED_CCMODE:
 			led->pdata->led_mode = AW210XX_LED_CCMODE;
 			break;
-		case AW210XX_LED_NEW_ALWAYSON:
-			led->pdata->led_mode = AW210XX_LED_NEW_ALWAYSON;
-			break;
 		case AW210XX_LED_BLINKMODE:
 			led->pdata->hold_time_ms = 4;
 			led->pdata->off_time_ms =  4;
@@ -1790,16 +1407,6 @@ static int aw210xx_led_change_mode(struct aw210xx *led,
 			led->pdata->rise_time_ms = 6;
 			led->pdata->fall_time_ms = 6;
 			led->pdata->led_mode = AW210XX_LED_BREATHMODE;
-			break;
-		case AW210XX_LED_INDIVIDUAL_CTL_BREATH:
-			led->pdata->hold_time_ms = 0;
-			led->pdata->off_time_ms =  0;
-			led->pdata->rise_time_ms = 6;
-			led->pdata->fall_time_ms = 6;
-			led->pdata->led_mode = AW210XX_LED_INDIVIDUAL_CTL_BREATH;
-			break;
-		case AW210XX_LED_MUSICMODE:
-			led->pdata->led_mode = AW210XX_LED_MUSICMODE;
 			break;
 		default:
 			led->pdata->led_mode = AW210XX_LED_NONE;
@@ -1842,29 +1449,6 @@ static void  aw210xx_led_cc_deactivate(struct led_classdev *cdev)
 	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
 
 	AW_LOG("[%d]: deactivate",led->id);
-}
-
-static int aw210xx_led_new_always_on_activate(struct led_classdev *cdev)
-{
-	int ret = 0;
-	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
-
-	AW_LOG("[%d]: new_always_on activate",led->id);
-
-	ret = aw210xx_led_change_mode(led, AW210XX_LED_NEW_ALWAYSON);
-	if (ret < 0) {
-		dev_err(led->cdev.dev, "%s: aw210xx_led_change_mode fail\n", __func__);
-		return ret;
-	}
-
-	return ret;
-}
-
-static void  aw210xx_led_new_always_on_deactivate(struct led_classdev *cdev)
-{
-	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
-
-	AW_LOG("[%d]: new_always_on deactivate",led->id);
 }
 
 static int	aw210xx_led_blink_activate(struct led_classdev *cdev)
@@ -1912,62 +1496,12 @@ static void aw210xx_led_breath_deactivate(struct led_classdev *cdev)
 	AW_LOG("[%d]: deactivate",led->id);
 }
 
-static int aw210xx_led_individual_ctl_breath_activate(struct led_classdev *cdev)
-{
-	int ret = 0;
-	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
-
-	AW_LOG("[%d]: individual_ctl_breath activate",led->id);
-
-	ret = aw210xx_led_change_mode(led, AW210XX_LED_INDIVIDUAL_CTL_BREATH);
-	if (ret < 0) {
-		dev_err(led->cdev.dev, "%s: aw210xx_led_change_mode fail\n", __func__);
-		return ret;
-	}
-	return ret;
-}
-
-static void aw210xx_led_individual_ctl_breath_deactivate(struct led_classdev *cdev)
-{
-	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
-
-	AW_LOG("[%d]: individual_ctl_breath deactivate",led->id);
-}
-
-static int aw210xx_led_music_activate(struct led_classdev *cdev)
-{
-	int ret = 0;
-	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
-
-	AW_LOG("[%d]: music activate",led->id);
-
-	ret = aw210xx_led_change_mode(led, AW210XX_LED_MUSICMODE);
-	if (ret < 0) {
-		dev_err(led->cdev.dev, "%s: aw210xx_led_change_mode fail\n", __func__);
-		return ret;
-	}
-	return ret;
-}
-
-static void aw210xx_led_music_deactivate(struct led_classdev *cdev)
-{
-	struct aw210xx *led = container_of(cdev, struct aw210xx, cdev);
-
-	AW_LOG("[%d]: music deactivate",led->id);
-}
-
 static struct led_trigger aw210xx_led_trigger[LED_MAX_NUM] = {
 	{
 		.name = "cc_mode",
 		.activate = aw210xx_led_cc_activate,
 		.deactivate = aw210xx_led_cc_deactivate,
 //		.groups = aw210xx_led_cc_mode_groups,
-	},
-	{
-		.name = "new_always_on_mode",
-		.activate = aw210xx_led_new_always_on_activate,
-		.deactivate = aw210xx_led_new_always_on_deactivate,
-//		.groups = aw210xx_led_new_always_on_mode_groups,
 	},
 	{
 		.name = "blink_mode",
@@ -1980,18 +1514,6 @@ static struct led_trigger aw210xx_led_trigger[LED_MAX_NUM] = {
 		.activate = aw210xx_led_breath_activate,
 		.deactivate = aw210xx_led_breath_deactivate,
 //		.groups = aw210xx_led_breath_mode_groups,
-	},
-	{
-		.name = "individual_ctl_breath",
-		.activate = aw210xx_led_individual_ctl_breath_activate,
-		.deactivate = aw210xx_led_individual_ctl_breath_deactivate,
-//		.groups = aw210xx_led_individual_ctl_breath_mode_groups,
-	},
-	{
-		.name = "music_mode",
-		.activate = aw210xx_led_music_activate,
-		.deactivate = aw210xx_led_music_deactivate,
-//		.groups = aw210xx_led_music_mode_groups,
 	},
 };
 
@@ -2049,7 +1571,6 @@ static int aw210xx_parse_dt(struct device *dev, struct aw210xx *aw210xx,
 		struct device_node *np)
 {
 	int ret = -EINVAL;
-	int led_order[4];
 
 	aw210xx->enable_gpio = of_get_named_gpio(np, "enable-gpio", 0);
 	if (aw210xx->enable_gpio < 0) {
@@ -2062,38 +1583,7 @@ static int aw210xx_parse_dt(struct device *dev, struct aw210xx *aw210xx,
 	if (aw210xx->vbled_enable_gpio < 0) {
 		aw210xx->vbled_enable_gpio = -1;
 		AW_ERR("no vbled enable gpio provided, HW enable unsupported\n");
-//		return ret;
-	}
-
-	ret = of_property_read_u32(np, "led_groups_num",
-			&aw210xx->led_groups_num);
-	if (ret < 0) {
-		AW_ERR("led_groups_num is not set, set led_groups_num = 2\n");
-		aw210xx->led_groups_num = 2;
-	}
-
-	ret = of_property_read_u32_array(np, "led_allocation_order", led_order, 4);
-
-	if (ret) {
-		AW_ERR("led_allocation_order is not set, set led_allocation_order = 1,2,3,4\n");
-		aw210xx->led_allocation_order[0] = 0;
-		aw210xx->led_allocation_order[1] = 1;
-		aw210xx->led_allocation_order[2] = 2;
-		aw210xx->led_allocation_order[3] = 3;
-	} else {
-		aw210xx->led_allocation_order[0] = led_order[0] - 1;
-		aw210xx->led_allocation_order[1] = led_order[1] - 1;
-		aw210xx->led_allocation_order[2] = led_order[2] - 1;
-		aw210xx->led_allocation_order[3] = led_order[3] - 1;
-		AW_ERR("led_allocation_order is %d,%d,%d,%d\n", aw210xx->led_allocation_order[0] + 1, aw210xx->led_allocation_order[1] + 1,
-			aw210xx->led_allocation_order[2] + 1, aw210xx->led_allocation_order[3] + 1);
-	}
-
-	ret = of_property_read_u32(np, "vbled_volt",
-			&aw210xx->vbled_volt);
-	if (ret < 0) {
-		AW_ERR("vbled_volt is not set\n");
-		aw210xx->vbled_volt = 0;
+		return ret;
 	}
 
 	ret = of_property_read_u32(np, "osc_clk",
@@ -2154,8 +1644,6 @@ static int aw210xx_i2c_probe(struct i2c_client *i2c,
 	aw210xx->num_leds = num_leds;
 	i2c_set_clientdata(i2c, aw210xx);
 	aw210xx->rgb_isnk_on = 0;
-	aw210xx->power_change_state = 0;
-	mutex_init(&aw210xx->lock);
 	aw210xx->boot_mode = get_boot_mode();
 
 	/* aw210xx parse device tree */
@@ -2182,27 +1670,6 @@ static int aw210xx_i2c_probe(struct i2c_client *i2c,
 		if (ret) {
 			AW_ERR("vbled enable gpio request failed\n");
 			goto err_gpio_request;
-		}
-	}
-
-	/* vdd 3.3v*/
-	aw210xx->vbled = regulator_get(aw210xx->dev, "vbled");
-
-	if (!aw210xx->vbled_volt || IS_ERR_OR_NULL(aw210xx->vbled)) {
-		AW_ERR("Regulator vdd3v3 get failed\n");
-
-	} else {
-		AW_ERR("Regulator vbled volt set %u \n", aw210xx->vbled_volt);
-		if (aw210xx->vbled_volt) {
-			ret = regulator_set_voltage(aw210xx->vbled, aw210xx->vbled_volt,
-							aw210xx->vbled_volt);
-
-		} else {
-			ret = regulator_set_voltage(aw210xx->vbled, 3300000, 3300000);
-		}
-
-		if (ret) {
-			AW_ERR("Regulator set_vtg failed vdd rc = %d\n", ret);
 		}
 	}
 
@@ -2272,7 +1739,6 @@ static int aw210xx_i2c_remove(struct i2c_client *i2c)
 		devm_gpio_free(&i2c->dev, aw210xx->enable_gpio);
 	if (gpio_is_valid(aw210xx->vbled_enable_gpio))
 		devm_gpio_free(&i2c->dev, aw210xx->vbled_enable_gpio);
-	mutex_destroy(&aw210xx->pdata->led->lock);
 	devm_kfree(&i2c->dev, aw210xx);
 	aw210xx = NULL;
 

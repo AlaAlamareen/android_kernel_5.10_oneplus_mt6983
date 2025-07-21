@@ -60,11 +60,7 @@ static inline bool bio_has_data(struct bio *bio)
 	    bio->bi_iter.bi_size &&
 	    bio_op(bio) != REQ_OP_DISCARD &&
 	    bio_op(bio) != REQ_OP_SECURE_ERASE &&
-	    bio_op(bio) != REQ_OP_WRITE_ZEROES
-#ifdef CONFIG_DEVICE_XCOPY
-	    && bio_op(bio) != REQ_OP_DEVICE_COPY
-#endif
-		)
+	    bio_op(bio) != REQ_OP_WRITE_ZEROES)
 		return true;
 
 	return false;
@@ -75,11 +71,7 @@ static inline bool bio_no_advance_iter(const struct bio *bio)
 	return bio_op(bio) == REQ_OP_DISCARD ||
 	       bio_op(bio) == REQ_OP_SECURE_ERASE ||
 	       bio_op(bio) == REQ_OP_WRITE_SAME ||
-	       bio_op(bio) == REQ_OP_WRITE_ZEROES
-#ifdef CONFIG_DEVICE_XCOPY
-	       || bio_op(bio) == REQ_OP_DEVICE_COPY
-#endif
-	       ;
+	       bio_op(bio) == REQ_OP_WRITE_ZEROES;
 }
 
 static inline bool bio_mergeable(struct bio *bio)
@@ -201,10 +193,6 @@ static inline unsigned bio_segments(struct bio *bio)
 		return 0;
 	case REQ_OP_WRITE_SAME:
 		return 1;
-#ifdef CONFIG_DEVICE_XCOPY
-	case REQ_OP_DEVICE_COPY:
-		return 1;
-#endif
 	default:
 		break;
 	}

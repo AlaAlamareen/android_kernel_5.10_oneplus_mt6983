@@ -141,32 +141,6 @@ int tcpci_check_vsafe0v(
 }
 EXPORT_SYMBOL(tcpci_check_vsafe0v);
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-int tcpci_get_chip_id(struct tcpc_device *tcpc,uint32_t *chip_id)
-{
-	if (tcpc->ops->get_chip_id == NULL)
-		return -ENOTSUPP;
-	return tcpc->ops->get_chip_id(tcpc,chip_id);
-}
-EXPORT_SYMBOL(tcpci_get_chip_id);
-int tcpci_get_chip_pid(struct tcpc_device *tcpc,uint32_t *chip_pid)
-{
-	if (tcpc->ops->get_chip_pid == NULL)
-		return -ENOTSUPP;
-
-	return tcpc->ops->get_chip_pid(tcpc,chip_pid);
-}
-EXPORT_SYMBOL(tcpci_get_chip_pid);
-int tcpci_get_chip_vid(struct tcpc_device *tcpc,uint32_t *chip_vid)
-{
-	if (tcpc->ops->get_chip_vid == NULL)
-		return -ENOTSUPP;
-
-	return tcpc->ops->get_chip_vid(tcpc,chip_vid);;
-}
-EXPORT_SYMBOL(tcpci_get_chip_vid);
-#endif
-
 int tcpci_alert_status_clear(
 	struct tcpc_device *tcpc, uint32_t mask)
 {
@@ -427,9 +401,8 @@ EXPORT_SYMBOL(tcpci_set_low_power_mode);
 int tcpci_set_watchdog(struct tcpc_device *tcpc, bool en)
 {
 	int rv = 0;
-#ifndef OPLUS_FEATURE_CHG_BASIC
+
 	if (tcpc->tcpc_flags & TCPC_FLAGS_WATCHDOG_EN)
-#endif
 		if (tcpc->ops->set_watchdog)
 			rv = tcpc->ops->set_watchdog(tcpc, en);
 
@@ -565,28 +538,6 @@ int tcpci_notify_chrdet_state(struct tcpc_device *tcpc, bool chrdet_state)
 					TCP_NOTIFY_CHRDET_STATE);
 }
 EXPORT_SYMBOL(tcpci_notify_chrdet_state);
-
-int tcpci_notify_switch_get_state(struct tcpc_device *tcpc, bool (*pfunc)(int))
-{
-	struct tcp_notify tcp_noti;
-
-	tcp_noti.switch_get_status.pfunc = pfunc;
-	return tcpc_check_notify_time(tcpc, &tcp_noti, TCP_NOTIFY_IDX_MISC,
-				TCP_NOTIFY_SWITCH_GET_STATE);
-}
-EXPORT_SYMBOL(tcpci_notify_switch_get_state);
-
-int tcpci_notify_switch_set_state(struct tcpc_device *tcpc, bool state, bool (*pfunc)(int))
-{
-	struct tcp_notify tcp_noti;
-
-	tcp_noti.switch_set_status.state = state;
-	tcp_noti.switch_set_status.pfunc = pfunc;
-	pr_err("%s state: %d\n", __func__, state);
-	return tcpc_check_notify_time(tcpc, &tcp_noti, TCP_NOTIFY_IDX_MISC,
-			TCP_NOTIFY_SWITCH_SET_STATE);
-}
-EXPORT_SYMBOL(tcpci_notify_switch_set_state);
 #endif
 
 int tcpci_notify_plug_out(struct tcpc_device *tcpc)
@@ -1067,8 +1018,6 @@ int tcpci_dp_configure(struct tcpc_device *tcpc, uint32_t dp_config)
 	case MODE_DP_SRC:
 		tcp_noti.ama_dp_state.sel_config = SW_UFP_D;
 		tcp_noti.ama_dp_state.pin_assignment = (dp_config >> 16) & 0xff;
-		break;
-	default:
 		break;
 	}
 	if (tcp_noti.ama_dp_state.pin_assignment == 0)

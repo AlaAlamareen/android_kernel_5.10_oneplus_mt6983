@@ -157,9 +157,6 @@ struct charger_ops {
 	int (*enable_otg)(struct charger_device *dev, bool en);
 	int (*enable_discharge)(struct charger_device *dev, bool en);
 	int (*set_boost_current_limit)(struct charger_device *dev, u32 uA);
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	int (*set_boost_voltage_limit)(struct charger_device *dev, u32 uv);
-#endif
 
 	/* charger type detection */
 	int (*enable_chg_type_det)(struct charger_device *dev, bool en);
@@ -382,9 +379,6 @@ extern int charger_dev_get_property(struct charger_device *dev,
 
 /* For buck1 FPWM */
 extern int charger_dev_enable_hidden_mode(struct charger_device *dev, bool en);
-#ifdef OPLUS_FEATURE_CHG_BASIC
-extern int charger_dev_set_boost_voltage_limit(struct charger_device *chg_dev, u32 uv);
-#endif
 
 extern int register_charger_device_notifier(
 	struct charger_device *charger_dev,

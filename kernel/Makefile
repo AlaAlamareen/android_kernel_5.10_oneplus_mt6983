@@ -56,7 +56,7 @@ obj-$(CONFIG_FREEZER) += freezer.o
 obj-$(CONFIG_PROFILING) += profile.o
 obj-$(CONFIG_STACKTRACE) += stacktrace.o
 obj-y += time/
-obj-$(CONFIG_FUTEX) += futex/
+obj-$(CONFIG_FUTEX) += futex.o
 obj-$(CONFIG_GENERIC_ISA_DMA) += dma.o
 obj-$(CONFIG_SMP) += smp.o
 ifneq ($(CONFIG_SMP),y)
@@ -149,14 +149,6 @@ obj-$(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING) += oplus_cpu/cpufreq_bouncing/
 #ifdef OPLUS_FEATURE_OMRG
 obj-$(CONFIG_OPLUS_OMRG) += oplus_cpu/oplus_omrg/
 #endif /* OPLUS_FEATURE_OMRG */
-
-#ifdef OPLUS_FEATURE_FREQQOS_MONITOR
-obj-$(CONFIG_OPLUS_FEATURE_FREQQOS_MONITOR) += oplus_cpu/freqqos_monitor/
-#endif /* OPLUS_FEATURE_FREQQOS_MONITOR */
-
-#ifdef OPLUS_FEATURE_WAKER_IDENTIFY
-obj-$(CONFIG_OPLUS_FEATURE_WAKER_IDENTIFY) += oplus_cpu/waker_identify/
-#endif OPLUS_FEATURE_WAKER_IDENTIFY
 
 #ifdef OPLUS_FEATURE_ABNORMAL_FLAG
 obj-$(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG) += oplus_cpu/oplus_overload/

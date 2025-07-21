@@ -3456,8 +3456,8 @@ static const struct mtk_iommu_plat_data mt6895_data_disp = {
 	.m4u_plat	= M4U_MT6895,
 	.flags          = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_BK_EN |
-			  SKIP_CFG_PORT | IOVA_34_EN | HAS_SMI_SUB_COMM |
-			  SAME_SUBSYS | HAS_BCLK,
+			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_MAU_EN |
+			  HAS_SMI_SUB_COMM | SAME_SUBSYS | HAS_BCLK,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
@@ -3474,8 +3474,8 @@ static const struct mtk_iommu_plat_data mt6895_data_mdp = {
 	.m4u_plat	= M4U_MT6895,
 	.flags          = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_BK_EN |
-			  SKIP_CFG_PORT | IOVA_34_EN | HAS_SMI_SUB_COMM |
-			  SAME_SUBSYS | HAS_BCLK,
+			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_MAU_EN |
+			  HAS_SMI_SUB_COMM | SAME_SUBSYS | HAS_BCLK,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= MDP_IOMMU,
@@ -3491,7 +3491,7 @@ static const struct mtk_iommu_plat_data mt6895_data_mdp = {
 static const struct mtk_iommu_plat_data mt6895_data_apu0 = {
 	.m4u_plat	= M4U_MT6895,
 	.flags          = HAS_SUB_COMM | TLB_SYNC_EN | IOMMU_SEC_BK_EN |
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU | IOMMU_MAU_EN |
 			  PM_OPS_SKIP,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
@@ -3508,7 +3508,7 @@ static const struct mtk_iommu_plat_data mt6895_data_apu0 = {
 static const struct mtk_iommu_plat_data mt6895_data_apu1 = {
 	.m4u_plat	= M4U_MT6895,
 	.flags          = HAS_SUB_COMM | TLB_SYNC_EN | IOMMU_SEC_BK_EN |
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU | IOMMU_MAU_EN |
 			  PM_OPS_SKIP,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,

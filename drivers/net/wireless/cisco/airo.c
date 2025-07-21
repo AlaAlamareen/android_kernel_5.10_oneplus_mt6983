@@ -5236,7 +5236,7 @@ static int get_wep_tx_idx(struct airo_info *ai)
 	return -1;
 }
 
-static int set_wep_key(struct airo_info *ai, u16 index, const u8 *key,
+static int set_wep_key(struct airo_info *ai, u16 index, const char *key,
 		       u16 keylen, int perm, int lock)
 {
 	static const unsigned char macaddr[ETH_ALEN] = { 0x01, 0, 0, 0, 0, 0 };
@@ -5287,7 +5287,7 @@ static void proc_wepkey_on_close(struct inode *inode, struct file *file)
 	struct net_device *dev = PDE_DATA(inode);
 	struct airo_info *ai = dev->ml_priv;
 	int i, rc;
-	u8 key[16];
+	char key[16];
 	u16 index = 0;
 	int j = 0;
 
@@ -5315,22 +5315,12 @@ static void proc_wepkey_on_close(struct inode *inode, struct file *file)
 	}
 
 	for (i = 0; i < 16*3 && data->wbuffer[i+j]; i++) {
-		int val;
-
-		if (i % 3 == 2)
-			continue;
-
-		val = hex_to_bin(data->wbuffer[i+j]);
-		if (val < 0) {
-			airo_print_err(ai->dev->name, "WebKey passed invalid key hex");
-			return;
-		}
 		switch(i%3) {
 		case 0:
-			key[i/3] = (u8)val << 4;
+			key[i/3] = hex_to_bin(data->wbuffer[i+j])<<4;
 			break;
 		case 1:
-			key[i/3] |= (u8)val;
+			key[i/3] |= hex_to_bin(data->wbuffer[i+j]);
 			break;
 		}
 	}
@@ -6150,11 +6140,8 @@ static int airo_get_rate(struct net_device *dev,
 {
 	struct airo_info *local = dev->ml_priv;
 	StatusRid status_rid;		/* Card status info */
-	int ret;
 
-	ret = readStatusRid(local, &status_rid, 1);
-	if (ret)
-		return -EBUSY;
+	readStatusRid(local, &status_rid, 1);
 
 	vwrq->value = le16_to_cpu(status_rid.currentXmitRate) * 500000;
 	/* If more than one rate, set auto */

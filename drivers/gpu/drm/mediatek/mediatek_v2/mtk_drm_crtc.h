@@ -399,15 +399,6 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_AUTO_MODE,
 	CRTC_PROP_AUTO_FAKE_FRAME,
 	CRTC_PROP_AUTO_MIN_FPS,
-
-	/* #ifdef OPLUS_BUG_STABILITY */
-	CRTC_PROP_HW_BLENDSPACE,
-	/* #ifdef OPLUS_BUG_STABILITY */
-
-/* #ifdef OPLUS_FEATURE_LOCAL_HDR  */
-	CRTC_PROP_HW_BRIGHTNESS,
-	CRTC_PROP_BRIGHTNESS_NEED_SYNC,
-/* #endif */
 	CRTC_PROP_STYLUS,
 	CRTC_PROP_MAX,
 };
@@ -524,18 +515,6 @@ enum CRTC_DDP_PATH {
 	DDP_FIRST_PATH,
 	DDP_SECOND_PATH,
 	DDP_PATH_NR,
-};
-
-/**
- * enum CRTC_PAPER_MODE -   use for paper mode
- * @default is disabled
- */
-enum CRTC_PAPER_MODE {
-	paper_disabled,
-	paper_disabling,
-	paper_enabled,
-	paper_enabling,
-	paper_renew_hrt,
 };
 
 /**
@@ -900,40 +879,6 @@ struct mtk_drm_crtc {
 	atomic_t force_high_step;
 	int force_high_enabled;
 	bool is_dsc_output_swap;
-
-	/* record status of paper_mode and mem */
-	struct task_struct *paper_texture_task;
-	struct mtk_drm_gem_obj *paper_texture_gem;
-	enum CRTC_PAPER_MODE paper_mode;
-	atomic_t paper_mode_done;
-	int papering_hrt_idx;
-	wait_queue_head_t signal_paper_mode_wq;
-	/* #ifdef OPLUS_BUG_STABILITY */
-	int blendspace;
-	/* #endif OPLUS_BUG_STABILITY */
-
-/* #ifdef OPLUS_FEATURE_LOCAL_HDR  */
-	/* indicate that whether the current frame backlight has been updated */
-	bool oplus_backlight_updated;
-#ifdef OPLUS_FEATURE_DISPLAY_APOLLO
-	int oplus_pending_backlight;
-	bool oplus_backlight_need_sync;
-	bool oplus_power_on;
-	bool oplus_refresh_rate_switching;
-	int oplus_te_tag_ns;
-	int oplus_timing_switch_tag_ns;
-	int oplus_te_diff_ns;
-	int cur_vsync;
-	int limit_superior_ns;
-	int limit_inferior_ns;
-	int transfer_time_us;
-	int pending_vsync;
-	int pending_limit_superior_ns;
-	int pending_limit_inferior_ns;
-	int pending_transfer_time_us;
-#endif /* OPLUS_FEATURE_DISPLAY_APOLLO */
-/* #endif OPLUS_FEATURE_LOCAL_HDR */
-
 };
 
 struct mtk_crtc_state {
@@ -1199,14 +1144,4 @@ int mtk_crtc_set_high_pwm_switch(struct drm_crtc *crtc, unsigned int en);
 
 /* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 void mtk_crtc_update_gce_event(struct mtk_drm_crtc *mtk_crtc);
-
-int mtk_drm_paper_mode_ioctl(struct drm_device *dev, void *data, struct drm_file *file_priv);
-int mtk_drm_paper_mode_en(struct drm_crtc *crtc, int en, int strength);
-int mtk_crtc_show_paper_texture(struct drm_crtc *crtc, bool enable, struct cmdq_pkt *crtc_cmdq_handle);
-int mtk_crtc_restore_paper_texture(struct drm_crtc *crtc, bool enable, struct cmdq_pkt *crtc_cmdq_handle);
-
-#ifdef OPLUS_FEATURE_DISPLAY_APOLLO
-int mtk_drm_setbacklight_without_lock(struct drm_crtc *crtc, unsigned int level);
-#endif /* OPLUS_FEATURE_DISPLAY_APOLLO */
-
 #endif /* MTK_DRM_CRTC_H */

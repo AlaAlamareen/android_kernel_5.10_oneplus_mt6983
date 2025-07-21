@@ -87,10 +87,6 @@
 		};
 };
 
-&memory_ssmr_features {
-    prot-region-based-size = <0 0x200000>;
-};
-
 /*Trustonic Mobicore real driver*/
 &mobicore {
     trustonic,real-drv=<1>;
@@ -943,7 +939,6 @@
 		spi_port_support;
 		fw_update_app_support;
 	        fingerprint_underscreen_support;
-		fp_disable_after_resume;
 		freq_hop_simulate_support;
 		report_flow_unlock_support;
 		screenoff_fingerprint_info_support;

@@ -870,7 +870,6 @@ static struct mtk_panel_params ext_params = {
 	.data_rate = 960,
         .color_vivid_status = true,
         .color_srgb_status = true,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .color_softiris_status = true,
         .color_dual_panel_status = false,
         .color_dual_brightness_status = true,
@@ -1001,7 +1000,6 @@ static struct mtk_panel_params ext_params_90hz = {
 	.data_rate = 960,
         .color_vivid_status = true,
         .color_srgb_status = true,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .color_softiris_status = true,
         .color_dual_panel_status = false,
         .color_dual_brightness_status = true,
@@ -1132,7 +1130,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	.data_rate = 960,
         .color_vivid_status = true,
         .color_srgb_status = true,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .color_softiris_status = true,
         .color_dual_panel_status = false,
         .color_dual_brightness_status = true,
@@ -1761,11 +1758,6 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
 
-	if (!m) {
-		pr_err("%s:%d invalid display_mode\n", __func__, __LINE__);
-		return ret;
-	}
-
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
 	else if (drm_mode_vrefresh(m) == 90)
@@ -1820,10 +1812,6 @@ static int mode_switch(struct drm_panel *panel,
 {
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
-	if (!m) {
-		pr_err("%s invalid drm_display_mode\n", __func__);
-		return 1;
-	}
 
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
 

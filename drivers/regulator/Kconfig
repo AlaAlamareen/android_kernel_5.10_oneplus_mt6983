@@ -385,16 +385,6 @@ config REGULATOR_WL2868C
 	  (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
 	  and four LDO outputs.
 
-config REGULATOR_WL28681C
-        tristate "Fairchild WL28681C Regulator"
-        depends on I2C && (OF || COMPILE_TEST)
-        select REGMAP_I2C
-        help
-          This driver supports Fairchild (ON Semiconductor) WL2868C
-          regulator. The regulator is a programmable power management IC
-          (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
-          and four LDO outputs
-
 config PMIC_FAN53870
 	tristate "Fairchild FAN53870 PMIC"
 	depends on I2C && (OF || COMPILE_TEST)

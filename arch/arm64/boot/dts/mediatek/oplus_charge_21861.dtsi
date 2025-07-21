@@ -183,7 +183,7 @@
 	qcom,temp_warm_fastchg_current_ma = <700>;
 	qcom,pd_temp_warm_fastchg_current_ma = <700>;
 	qcom,qc_temp_warm_fastchg_current_ma = <700>;
-	qcom,temp_warm_fastchg_current_ma_led_on = <500>;
+	qcom,temp_warm_fastchg_current_ma_led_on = <250>;
 
 	qcom,hot_bat_decidegc = <530>;
 
@@ -2213,10 +2213,6 @@
 };
 
 &soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
-	};
 	oplus_chg_comm: oplus,common-charge {
 		status = "ok";
 		compatible = "oplus,common-charge";
@@ -2527,7 +2523,6 @@
 	charger_by_buckboost;
 	support_tuv_authentication;
 	charger_no_wiress;
-        support_sdp_screenoff;
 	sub_board_temp_support;
 
 	led_brightness = <102>;
@@ -2540,7 +2535,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-        en_vol_ctrl_vibrate = <3200>;
 };
 
 /*&phy_tuning {

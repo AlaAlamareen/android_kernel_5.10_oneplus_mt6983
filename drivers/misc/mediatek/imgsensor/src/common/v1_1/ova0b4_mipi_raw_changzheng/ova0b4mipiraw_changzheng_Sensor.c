@@ -1761,9 +1761,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
         *(feature_data + 1) = imgsensor_info.min_shutter;
         *(feature_data + 2) = imgsensor_info.exp_step;
         break;
-    case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-        *(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1096800;
-        break;
     case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
         switch (*feature_data) {
         case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
@@ -2310,9 +2307,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
                         return ERROR_INVALID_SCENARIO_ID;
                 }
                 switch (*feature_data) {
-                case MSDK_SCENARIO_ID_CUSTOM5:
-                        *pScenarios = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
-                        break;
                 case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
                         *pScenarios = MSDK_SCENARIO_ID_CUSTOM5;
                         break;

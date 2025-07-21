@@ -111,7 +111,7 @@
 			i2c_addr = <65>;
 			direction = <4>;
 			eint_num = <17>;
-			als_ratio = <200>;
+			als_ratio = <1000>;
 			als_buffer_length = <10>;
 			als_type = <1>;
 			device_name = "mn78911";
@@ -131,12 +131,6 @@
 		cali_arch: cali_arch {
 			status = "okay";
 			new-arch-supported = <1>;
-		};
-		pocket: pocket {
-			status = "okay";
-			support_pocket = <1>;
-                        use_sub_accgyro = <0>;
-			need_als = <0>;
 		};
 	};
 /* sensor end */

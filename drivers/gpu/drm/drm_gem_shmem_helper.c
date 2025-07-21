@@ -563,20 +563,12 @@ static void drm_gem_shmem_vm_open(struct vm_area_struct *vma)
 {
 	struct drm_gem_object *obj = vma->vm_private_data;
 	struct drm_gem_shmem_object *shmem = to_drm_gem_shmem_obj(obj);
+	int ret;
 
 	WARN_ON(shmem->base.import_attach);
 
-	mutex_lock(&shmem->pages_lock);
-
-	/*
-	 * We should have already pinned the pages when the buffer was first
-	 * mmap'd, vm_open() just grabs an additional reference for the new
-	 * mm the vma is getting copied into (ie. on fork()).
-	 */
-	if (!WARN_ON_ONCE(!shmem->pages_use_count))
-		shmem->pages_use_count++;
-
-	mutex_unlock(&shmem->pages_lock);
+	ret = drm_gem_shmem_get_pages(shmem);
+	WARN_ON_ONCE(ret != 0);
 
 	drm_gem_vm_open(vma);
 }
@@ -614,27 +606,20 @@ int drm_gem_shmem_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 	int ret;
 
 	if (obj->import_attach) {
-		/* Reset both vm_ops and vm_private_data, so we don't end up with
-		 * vm_ops pointing to our implementation if the dma-buf backend
-		 * doesn't set those fields.
-		 */
-		vma->vm_private_data = NULL;
-		vma->vm_ops = NULL;
-
-		ret = dma_buf_mmap(obj->dma_buf, vma, 0);
-
 		/* Drop the reference drm_gem_mmap_obj() acquired.*/
-		if (!ret)
-			drm_gem_object_put(obj);
+		drm_gem_object_put(obj);
+		vma->vm_private_data = NULL;
 
-		return ret;
+		return dma_buf_mmap(obj->dma_buf, vma, 0);
 	}
 
 	shmem = to_drm_gem_shmem_obj(obj);
 
 	ret = drm_gem_shmem_get_pages(shmem);
-	if (ret)
+	if (ret) {
+		drm_gem_vm_close(vma);
 		return ret;
+	}
 
 	vma->vm_flags |= VM_MIXEDMAP | VM_DONTEXPAND;
 	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);

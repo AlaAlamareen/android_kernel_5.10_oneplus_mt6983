@@ -969,8 +969,10 @@ struct task_struct {
 	struct nameidata		*nameidata;
 
 #ifdef CONFIG_SYSVIPC
-	struct sysv_sem			sysvsem;
-	struct sysv_shm			sysvshm;
+	// struct sysv_sem			sysvsem;
+	/* sysvsem is in the ANDROID_KABI_RESERVE(1) field below */
+	// struct sysv_shm			sysvshm;
+	/* sysvshm is in the ANDROID_KABI_RESERVE(1) field below */
 #endif
 #ifdef CONFIG_DETECT_HUNG_TASK
 	unsigned long			last_switch_count;
@@ -1377,11 +1379,17 @@ struct task_struct {
 	/* Please add your member in struct oplus_task_struct */
 	ANDROID_OEM_DATA_ARRAY(1, 32);
 
-	/* PF_IO_WORKER */
-	ANDROID_KABI_USE(1, void *pf_io_worker);
-
+#if defined(CONFIG_SYSVIPC)
+	// struct sysv_sem			sysvsem;
+	ANDROID_KABI_USE(1, struct sysv_sem sysvsem);
+	// struct sysv_shm			sysvshm;
+	_ANDROID_KABI_REPLACE(ANDROID_KABI_RESERVE(2); ANDROID_KABI_RESERVE(3),
+						  struct sysv_shm sysvshm);
+#else
+	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
+#endif
 	ANDROID_KABI_RESERVE(4);
 	ANDROID_KABI_RESERVE(5);
 	ANDROID_KABI_RESERVE(6);
@@ -1688,6 +1696,7 @@ current_restore_flags(unsigned long orig_flags, unsigned long flags)
 }
 
 extern int cpuset_cpumask_can_shrink(const struct cpumask *cur, const struct cpumask *trial);
+extern int task_can_attach(struct task_struct *p, const struct cpumask *cs_effective_cpus);
 
 #ifdef CONFIG_RT_SOFTINT_OPTIMIZATION
 extern bool cpupri_check_rt(void);
@@ -1698,9 +1707,6 @@ static inline bool cpupri_check_rt(void)
 }
 #endif
 
-extern int task_can_attach(struct task_struct *p);
-extern int dl_bw_alloc(int cpu, u64 dl_bw);
-extern void dl_bw_free(int cpu, u64 dl_bw);
 #ifdef CONFIG_SMP
 extern void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask);
 extern int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask);
@@ -1816,16 +1822,10 @@ static inline void kick_process(struct task_struct *tsk) { }
 #endif
 
 extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-extern void update_task_hugepage_critical_flag(struct task_struct *tsk);
-#endif
 
 static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-	update_task_hugepage_critical_flag(tsk);
-#endif
 }
 
 extern char *__get_task_comm(char *to, size_t len, struct task_struct *tsk);

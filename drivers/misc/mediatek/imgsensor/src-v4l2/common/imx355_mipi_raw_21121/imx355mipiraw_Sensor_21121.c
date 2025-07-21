@@ -1735,7 +1735,7 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, UINT32 *sensor_id)
                     read_stereo_data(ctx);
                     first_read = KAL_FALSE;
                 }
-                pr_info("i2c write id: 0x%x, sensor id: 0x%x\n", ctx->i2c_write_id, *sensor_id);
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", ctx->i2c_write_id, *sensor_id);
                 return ERROR_NONE;
             }
             LOG_INF("Read sensor id fail, id: 0x%x\n", ctx->i2c_write_id);

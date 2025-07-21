@@ -390,11 +390,7 @@ static unsigned int do_2a_gain_imx890(struct EEPROM_DRV_FD_DATA *pdata,
         #endif
         #endif
         /* AWB Unit Gain (3100K) */
-        CalR  = 0;
-        CalGr = 0;
-        CalGb = 0;
-        CalG  = 0;
-        CalB  = 0;
+        CalR = CalGr = CalGb = CalG = CalB = 0;
         tempMax = 0;
         pr_debug_if(dump_enable, "3100K AWB\n");
         awb_offset = 0x44;
@@ -445,11 +441,7 @@ static unsigned int do_2a_gain_imx890(struct EEPROM_DRV_FD_DATA *pdata,
             pr_debug("Unit R=%d G=%d B=%d!!\n", CalR, CalG, CalB);
         }
         /* AWB Golden Gain (3100K) */
-        FacR  = 0;
-        FacGr = 0;
-        FacGb = 0;
-        FacG  = 0;
-        FacB  = 0;
+        FacR = FacGr = FacGb = FacG = FacB = 0;
         tempMax = 0;
         awb_offset = 0x4C;
         read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,

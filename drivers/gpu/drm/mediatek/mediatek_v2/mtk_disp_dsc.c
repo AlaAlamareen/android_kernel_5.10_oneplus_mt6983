@@ -1128,22 +1128,6 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			mtk_ddp_write(comp, 0xd165d945,	DISP_REG_DSC_PPS17, handle);
 			mtk_ddp_write(comp, 0xd189d165,	DISP_REG_DSC_PPS18, handle);
 			mtk_ddp_write(comp, 0x0000d1ac,	DISP_REG_DSC_PPS19, handle);
-		} else if (5 == dsc_params->dsc_scr_version) {
-			//8bpc_to_8bpp_20_slice_h
-			mtk_ddp_write(comp, 0x20000c03, DISP_REG_DSC_PPS6, handle);
-			mtk_ddp_write(comp, 0x330b0b06, DISP_REG_DSC_PPS7, handle);
-			mtk_ddp_write(comp, 0x382a1c0e, DISP_REG_DSC_PPS8, handle);
-			mtk_ddp_write(comp, 0x69625446, DISP_REG_DSC_PPS9, handle);
-			mtk_ddp_write(comp, 0x7b797770, DISP_REG_DSC_PPS10, handle);
-			mtk_ddp_write(comp, 0x00007e7d, DISP_REG_DSC_PPS11, handle);
-			mtk_ddp_write(comp, 0x00800880, DISP_REG_DSC_PPS12, handle);
-			mtk_ddp_write(comp, 0xf8c100a1, DISP_REG_DSC_PPS13, handle);
-			mtk_ddp_write(comp, 0xe8e3f0e3, DISP_REG_DSC_PPS14, handle);
-			mtk_ddp_write(comp, 0xe103e0e3, DISP_REG_DSC_PPS15, handle);
-			mtk_ddp_write(comp, 0xd944e123,	DISP_REG_DSC_PPS16, handle);
-			mtk_ddp_write(comp, 0xd965d945,	DISP_REG_DSC_PPS17, handle);
-			mtk_ddp_write(comp, 0xd188d165,	DISP_REG_DSC_PPS18, handle);
-			mtk_ddp_write(comp, 0x0000d1ac,	DISP_REG_DSC_PPS19, handle);
 		} else {
 			//8bpc_to_8bpp_20_slice_h
 			mtk_ddp_write(comp, 0x20000c03, DISP_REG_DSC_PPS6, handle);

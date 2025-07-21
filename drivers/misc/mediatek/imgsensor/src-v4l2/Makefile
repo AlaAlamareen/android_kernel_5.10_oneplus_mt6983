@@ -24,8 +24,6 @@ imgsensor-objs := \
 	adaptor-ctrls.o \
 	adaptor-ioctl.o \
 	adaptor-common-ctrl.o \
-	adaptor-fsync-ctrls.o \
-	adaptor-trace.o \
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 ifeq ($(CONFIG_OPLUS_CAM_EVENT_REPORT),m)

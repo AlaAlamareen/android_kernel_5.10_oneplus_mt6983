@@ -3898,8 +3898,6 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 		if (shutters[0] < imgsensor_info.min_shutter)
 			shutters[0] = imgsensor_info.min_shutter;
 
-		set_cmos_sensor(ctx, 0x0702, 0);
-		set_cmos_sensor(ctx, 0x0704, 0);
 		/* Update Shutter */
 		set_cmos_sensor(ctx, 0x0104, 0x01);//grouphold start
 		set_cmos_sensor(ctx, 0x0340, ctx->frame_length & 0xFFFF);

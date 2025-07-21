@@ -210,7 +210,6 @@
 	qcom,new_ui_warning_support;
 	qcom,ffc_support;
 	qcom,dual_ffc;
-	oplus,aging_ffc_version = <1>;
 	recharge_after_full;
 	qcom,wireless_support;
 
@@ -2064,11 +2063,6 @@
 };
 
 &soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
-	};
-
 	oplus_chg_comm: oplus,common-charge {
 		status = "ok";
 		compatible = "oplus,common-charge";
@@ -2353,7 +2347,7 @@
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO16__FUNC_GPIO16>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
-			output-high;
+			output-high;	
 		};
 	};
 };
@@ -2362,7 +2356,6 @@
 	charger_by_buckboost;
 	support_tuv_authentication;
 	charger_no_wiress;
-        support_sdp_screenoff;
 
 	max_charger_voltage = <15000000>;
 	boot_battery_voltage = <3350000>;
@@ -2373,7 +2366,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-	en_vol_ctrl_vibrate = <3200>;
 };
 
 /*&phy_tuning {

@@ -104,11 +104,15 @@
 
 	pinctrl-names = "default",
 			"charger_gpio_as_output_low",  /*Level 1 switch*/
-			"charger_gpio_as_output_high";
+			"charger_gpio_as_output_high",
+			"dischg_enable",  /*Prevent burning control*/
+			"dischg_disable";
 
 	pinctrl-0 = <&charger_pins_default>;
 	pinctrl-1 = <&charger_pins_eint_output0>;
 	pinctrl-2 = <&charger_pins_eint_output1>;
+	pinctrl-3 = <&dischg_enable>;
+	pinctrl-4 = <&dischg_disable>;
 
 
 	//for oplus chg framework:
@@ -270,18 +274,12 @@
 	qcom,default_temp_little_cool_vfloat_mv = <4435>;
 	qcom,default_little_cool_vfloat_over_sw_limit = <4445>;
 
-	oplus,poweroff_high_batt_temp = <720>;
-	oplus,poweroff_emergency_batt_temp = <770>;
-	oplus,usbtemp_batt_temp_over_hot = <60>;
-	oplus,usbtemp_temp_gap_with_batt_temp_in_over_hot = <15>;
-
 	//for PD9V or QC9V
 	qcom,vbatt_pdqc_to_5v_thr = <4500>;
 	qcom,vbatt_pdqc_to_9v_thr = <4500>;
 
 	//for control:
 	//qcom,suspend_after_full;
-	qcom,support_abnormal_adapter;
 	qcom,check_batt_full_by_sw;
 	qcom,chg_ctrl_by_lcd;
 	qcom,chg_ctrl_by_camera;
@@ -302,6 +300,7 @@
 
 	//GPIO config:
 	qcom,chargerid_switch-gpio = <&pio 23 0x00>;
+	qcom,dischg-gpio = <&pio 50 0x00>;
 
 	qcom,vooc-max-input-volt-support = <11000>;     //10V
 	qcom,vooc-max-input-current-support = <3000>;   //6.5A
@@ -340,7 +339,6 @@
 		status = "okay";
 		compatible = "sc,sc8547-master";
 		reg = <0x6F 0>;
-		ovp_reg = <0x36>; /* vbat_ovp:4.85V */
 
 		qcom,irq_gpio = <&pio 1 0x00>;
 		interrupt-parent = <&pio>;
@@ -362,7 +360,6 @@
 
 		qcom,svooc_cool_down_current_limit = <122 20 20 24 30 34 40 44 50 54 60 64 70 74>;
 		qcom,vooc_cool_down_current_limit = <61 20 20 24 30 34 40 44 50 54 60 64 70 74>;
-		qcom,abnormal_adapter_current = <122 100 80 60 40>;
 
 		qcom,vooc_multistep_initial_batt_temp = <1000>;
 		qcom,vooc_little_cool_temp = <160>;
@@ -581,7 +578,6 @@
 		status = "okay";
 		compatible = "sc,sc8547-slave";
 		reg = <0x6F 0>;
-		ovp_reg = <0x36>; /* vbat_ovp:4.85V */
 	};
 };
 
@@ -599,6 +595,22 @@
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO23__FUNC_GPIO23>;
 			output-high;
+		};
+	};
+
+	dischg_enable: dischg_enable {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO50__FUNC_GPIO50>;
+			bias-pull-up;
+			output-high;
+		};
+	};
+
+	dischg_disable: dischg_disable {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO50__FUNC_GPIO50>;
+			bias-pull-down;
+			output-low;
 		};
 	};
 
@@ -644,11 +656,6 @@
 &lk_charger {
 	support_tuv_authentication;
 	support_battery_authentication;
-        support_sdp_screenoff;
-
-	high-temp-scheme;
-	over_high_temp_thr = <60>;
-
 	charger_no_wiress;
 	sub_board_temp_support;
 	support_battery_type = <2>;  /* BATTERY_4P45V_SINGLE */
@@ -661,7 +668,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-        en_vol_ctrl_vibrate = <3200>;
 	data-gpio = <190>;
 	cpu-id = <7>;
 	key-id = <1>;
@@ -686,13 +692,6 @@
 		track,voocphy_type = <3>;
 		track,wired_max_power = <67000>;
 		track,wired_fast_chg_scheme = <2>;
-	};
-};
-
-&soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
 	};
 };
 

@@ -46,7 +46,6 @@
 #include "imx709mipiraw_Sensor_21121.h"
 #include "imx709_ana_gain_table_21121.h"
 #include "imx709_eeprom_21121.h"
-#include "imx709_vcm_21121.h"
 
 #include "adaptor-subdrv.h"
 #include "adaptor-i2c.h"
@@ -4775,7 +4774,7 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, UINT32 *sensor_id)
                 read_cmos_sensor(ctx, 0x0000));
             if (*sensor_id == IMX709_SENSOR_ID) {
                 *sensor_id = imgsensor_info.sensor_id;
-                pr_info("i2c write id: 0x%x, sensor id: 0x%x\n",
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
                     ctx->i2c_write_id, *sensor_id);
                 if(first_read){
                     read_module_data(ctx);
@@ -4826,13 +4825,6 @@ static int open(struct subdrv_ctx *ctx)
     UINT32 sensor_id = 0;
 
     LOG_INF("IMX709 open start\n");
-
-    if (ctx->is_esd_enable == true) {
-        LOG_INF("Esd reset occur, reinit vcm");
-        write_imx709_21121_vcm_init(ctx);
-        ctx->is_esd_enable = false;
-    }
-
     /*sensor have two i2c address 0x6c 0x6d & 0x21 0x20,
      *we should detect the module used i2c address
      */
@@ -4848,7 +4840,7 @@ static int open(struct subdrv_ctx *ctx)
                 read_cmos_sensor(ctx, 0x0000));
             if (sensor_id == IMX709_SENSOR_ID) {
                 sensor_id = imgsensor_info.sensor_id;
-                pr_info("i2c write id: 0x%x, sensor id: 0x%x\n",
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
                     ctx->i2c_write_id, sensor_id);
                 break;
             }
@@ -6598,14 +6590,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
         if (*feature_data != 0)
             set_shutter(ctx, *feature_data, KAL_TRUE);
         streaming_control(ctx, KAL_TRUE);
-        break;
-    case SENSOR_FEATURE_GET_EXPOSURE_COUNT_BY_SCENARIO:
-        if (*feature_data == SENSOR_SCENARIO_ID_CUSTOM7 ||
-            *feature_data == SENSOR_SCENARIO_ID_CUSTOM9) {
-            *(feature_data + 1) = 2;  /* 2DOL */
-        } else {
-            *(feature_data + 1) = 1;  /* 1DOL */
-        }
         break;
     case SENSOR_FEATURE_GET_BINNING_TYPE:
         switch (*(feature_data + 1)) {

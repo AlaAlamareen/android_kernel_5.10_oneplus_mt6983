@@ -567,7 +567,7 @@ int lpm_spm_fs_init(void)
 	mtk_spm_sysfs_entry_node_add("spm_resource_req", 0444
 			, &spm_res_rq_fops, NULL);
 #if IS_ENABLED(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
-	mtk_spm_sysfs_entry_node_add("system_stats", 0444
+	mtk_spm_sysfs_entry_node_add("system_stat", 0444
 			, &system_stat_fops, NULL);
 #endif
 

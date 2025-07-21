@@ -221,9 +221,6 @@ static void aw8692x_set_wav_loop(struct aw_haptic *aw_haptic, uint8_t wav,
 	}
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 static void aw8692x_set_rtp_data(struct aw_haptic *aw_haptic, uint8_t *data,
 				 uint32_t len)
 {
@@ -231,9 +228,6 @@ static void aw8692x_set_rtp_data(struct aw_haptic *aw_haptic, uint8_t *data,
 	i2c_w_bytes(aw_haptic, AW8692X_REG_RTPDATA, data, len);
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 static void aw8692x_set_ram_data(struct aw_haptic *aw_haptic, uint8_t *data,
 				 uint32_t len)
 {
@@ -297,9 +291,6 @@ static void aw8692x_auto_break_mode(struct aw_haptic *aw_haptic, bool flag)
 	}
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 static void aw8692x_f0_detect(struct aw_haptic *aw_haptic, bool flag)
 {
 	aw_dev_dbg("%s: enter!\n", __func__);
@@ -341,9 +332,6 @@ static uint8_t aw8692x_read_irq_state(struct aw_haptic *aw_haptic)
 	return irq_state_val;
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 static void aw8692x_play_go(struct aw_haptic *aw_haptic, bool flag)
 {
 	uint8_t go_on = AW8692X_BIT_PLAYCFG4_GO_ON;
@@ -906,9 +894,6 @@ static int aw8692x_juge_rtp_going(struct aw_haptic *aw_haptic)
 	return rtp_state;
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 static void aw8692x_get_ram_data(struct aw_haptic *aw_haptic,
 				    uint8_t *data, uint32_t size)
 {

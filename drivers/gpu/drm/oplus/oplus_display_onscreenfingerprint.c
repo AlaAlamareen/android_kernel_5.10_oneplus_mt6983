@@ -25,46 +25,14 @@
 #include "oplus_display_temp_compensation.h"
 #endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
 
-/* -------------------- macro -------------------- */
-/* fp type bit setting */
-#define OPLUS_OFP_FP_TYPE_LCD_CAPACITIVE					(BIT(0))
-#define OPLUS_OFP_FP_TYPE_OLED_CAPACITIVE					(BIT(1))
-#define OPLUS_OFP_FP_TYPE_OPTICAL_OLD_SOLUTION				(BIT(2))
-#define OPLUS_OFP_FP_TYPE_OPTICAL_NEW_SOLUTION				(BIT(3))
-#define OPLUS_OFP_FP_TYPE_LOCAL_HBM							(BIT(4))
-#define OPLUS_OFP_FP_TYPE_BRIGHTNESS_ADAPTATION				(BIT(5))
-#define OPLUS_OFP_FP_TYPE_ULTRASONIC						(BIT(6))
-#define OPLUS_OFP_FP_TYPE_ULTRA_LOW_POWER_AOD				(BIT(7))
-#define OPLUS_OFP_FP_TYPE_VIDEO_MODE_AOD_FOD				(BIT(9))
-/* get fp type config */
-#define OPLUS_OFP_GET_LCD_CAPACITIVE_CONFIG(fp_type)		((fp_type) & OPLUS_OFP_FP_TYPE_LCD_CAPACITIVE)
-#define OPLUS_OFP_GET_OLED_CAPACITIVE_CONFIG(fp_type)		((fp_type) & OPLUS_OFP_FP_TYPE_OLED_CAPACITIVE)
-#define OPLUS_OFP_GET_OPTICAL_OLD_SOLUTION_CONFIG(fp_type)	((fp_type) & OPLUS_OFP_FP_TYPE_OPTICAL_OLD_SOLUTION)
-#define OPLUS_OFP_GET_OPTICAL_NEW_SOLUTION_CONFIG(fp_type)	((fp_type) & OPLUS_OFP_FP_TYPE_OPTICAL_NEW_SOLUTION)
-#define OPLUS_OFP_GET_LOCAL_HBM_CONFIG(fp_type)				((fp_type) & OPLUS_OFP_FP_TYPE_LOCAL_HBM)
-#define OPLUS_OFP_GET_BRIGHTNESS_ADAPTATION_CONFIG(fp_type)	((fp_type) & OPLUS_OFP_FP_TYPE_BRIGHTNESS_ADAPTATION)
-#define OPLUS_OFP_GET_ULTRASONIC_CONFIG(fp_type)			((fp_type) & OPLUS_OFP_FP_TYPE_ULTRASONIC)
-#define OPLUS_OFP_GET_ULTRA_LOW_POWER_AOD_CONFIG(fp_type)	((fp_type) & OPLUS_OFP_FP_TYPE_ULTRA_LOW_POWER_AOD)
-#define OPLUS_OFP_GET_VIDEO_MODE_AOD_FOD_CONFIG(fp_type)	((fp_type) & OPLUS_OFP_FP_TYPE_VIDEO_MODE_AOD_FOD)
-/* notifier event */
-#define DRM_PANEL_EVENT_HBM_STATE 1
-#define VSYNC_PERIOD_120HZ 8333
-#define VSYNC_PERIOD_90HZ  11111
-#define VSYNC_PERIOD_60HZ  16666
-
 /* -------------------- parameters -------------------- */
 /* log level config */
 int oplus_ofp_log_level = OPLUS_OFP_LOG_LEVEL_INFO;
 EXPORT_SYMBOL(oplus_ofp_log_level);
 /* ofp global structure */
 static struct oplus_ofp_params g_oplus_ofp_params = {0};
-
-/* -------------------- extern -------------------- */
-/* extern params */
+/* extern para */
 extern unsigned int oplus_display_brightness;
-extern struct oplus_demura_setting_table demura_setting;
-/* extern functions */
-extern void lcdinfo_notify(unsigned long val, void *v);
 
 /* -------------------- oplus_ofp_params -------------------- */
 static struct oplus_ofp_params *oplus_ofp_get_params(void)
@@ -82,23 +50,6 @@ inline bool oplus_ofp_is_support(void)
 	}
 
 	return p_oplus_ofp_params->ofp_support;
-}
-
-bool oplus_ofp_video_mode_aod_fod_is_enabled(void)
-{
-	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-
-	if (!p_oplus_ofp_params) {
-		OFP_ERR("Invalid params\n");
-		return 0;
-	}
-
-	if (!oplus_ofp_is_support()) {
-		OFP_ERR("ofp is not support, video mode aod and fod are also not supported\n");
-		return false;
-	}
-
-	return (bool)(OPLUS_OFP_GET_VIDEO_MODE_AOD_FOD_CONFIG(p_oplus_ofp_params->fp_type));
 }
 
 int oplus_ofp_init(void *mtk_drm_private)
@@ -120,18 +71,16 @@ int oplus_ofp_init(void *mtk_drm_private)
 		hrtimer_init(&p_oplus_ofp_params->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		p_oplus_ofp_params->timer.function = oplus_ofp_notify_uiready_timer_handler;
 
-		if (!oplus_ofp_video_mode_aod_fod_is_enabled()) {
-			/* add for touchpanel event notifier */
-			p_oplus_ofp_params->touchpanel_event_notifier.notifier_call = oplus_ofp_touchpanel_event_notifier_call;
-			ret = touchpanel_event_register_notifier(&p_oplus_ofp_params->touchpanel_event_notifier);
-			if (ret < 0) {
-				OFP_ERR("failed to register touchpanel event notifier: %d\n", ret);
-			}
-
-			/* add workqueue to send aod off cmd */
-			p_oplus_ofp_params->aod_off_set_wq = create_singlethread_workqueue("aod_off_set");
-			INIT_WORK(&p_oplus_ofp_params->aod_off_set_work, oplus_ofp_aod_off_set_work_handler);
+		/* add for touchpanel event notifier */
+		p_oplus_ofp_params->touchpanel_event_notifier.notifier_call = oplus_ofp_touchpanel_event_notifier_call;
+		ret = touchpanel_event_register_notifier(&p_oplus_ofp_params->touchpanel_event_notifier);
+		if (ret < 0) {
+			OFP_ERR("failed to register touchpanel event notifier: %d\n", ret);
 		}
+
+		/* add workqueue to send aod off cmd */
+		p_oplus_ofp_params->aod_off_set_wq = create_singlethread_workqueue("aod_off_set");
+		INIT_WORK(&p_oplus_ofp_params->aod_off_set_work, oplus_ofp_aod_off_set_work_handler);
 	}
 
 	return 0;
@@ -180,31 +129,14 @@ int oplus_ofp_set_aod_state(bool aod_state)
 	}
 
 	p_oplus_ofp_params->aod_state = aod_state;
+	if (!(p_oplus_ofp_params->aod_state)) {
+		p_oplus_ofp_params->aod_light_mode = 0;
+	}
 	OFP_INFO("oplus_ofp_aod_state: %d\n", p_oplus_ofp_params->aod_state);
 	mtk_drm_trace_c("%d|oplus_ofp_aod_state|%d", g_commit_pid, p_oplus_ofp_params->aod_state);
 
 	return 0;
 }
-
-bool oplus_ofp_get_fake_aod_mode(void)
-{
-	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-
-	OFP_DEBUG("start\n");
-	if (!p_oplus_ofp_params) {
-		OFP_ERR("Invalid params\n");
-		return false;
-	}
-
-	mtk_drm_trace_begin("oplus_ofp_get_fake_aod_mode");
-	OFP_DEBUG("oplus_ofp_fake_aod_mode:%u\n", p_oplus_ofp_params->fake_aod_mode);
-	mtk_drm_trace_end();
-
-	OFP_DEBUG("end\n");
-
-	return p_oplus_ofp_params->fake_aod_mode;
-}
-EXPORT_SYMBOL(oplus_ofp_get_fake_aod_mode);
 
 int oplus_ofp_get_hbm_state(void)
 {
@@ -230,47 +162,6 @@ int oplus_ofp_set_hbm_state(bool hbm_state)
 	p_oplus_ofp_params->hbm_state = hbm_state;
 	OFP_INFO("oplus_ofp_hbm_state: %d\n", hbm_state);
 	mtk_drm_trace_c("%d|oplus_ofp_hbm_state|%d", g_commit_pid, hbm_state);
-
-	oplus_ofp_send_hbm_state_event(hbm_state);
-
-	return 0;
-}
-
-static int oplus_ofp_set_panel_hbm_witch_demura(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, bool hbm_en)
-{
-	unsigned int level = 0;
-	int bl_demura_mode = OPLUS_DEMURA_DBV_MODE_MAX;
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
-
-	if (!(comp && comp->funcs && comp->funcs->io_cmd)) {
-		OFP_ERR("Invalid params\n");
-		return -EINVAL;
-	}
-	if (cmdq_handle == NULL) {
-		cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
-	}
-	mtk_drm_trace_begin("DSI_SET_DEMURA_BL");
-
-	if (hbm_en)
-		level = 0xF01;
-	else
-		level = oplus_display_brightness;
-
-	if ((level > 1) && (level < demura_setting.demura_switch_dvb1)) {
-		bl_demura_mode = OPLUS_DEMURA_DBV_MODE0;
-	} else if ((level >= demura_setting.demura_switch_dvb1) && (level < demura_setting.demura_switch_dvb2)) {
-		bl_demura_mode = OPLUS_DEMURA_DBV_MODE1;
-	} else if ((level >= demura_setting.demura_switch_dvb2) && (level < demura_setting.demura_switch_dvb3)) {
-		bl_demura_mode = OPLUS_DEMURA_DBV_MODE2;
-	} else if ((level >= demura_setting.demura_switch_dvb3) && (level < demura_setting.demura_switch_dvb4)) {
-		bl_demura_mode = OPLUS_DEMURA_DBV_MODE3;
-	} else if (level >= demura_setting.demura_switch_dvb4) {
-		bl_demura_mode = OPLUS_DEMURA_DBV_MODE4;
-	}
-
-	comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_DEMURA_BL, &bl_demura_mode);
-	OFP_DEBUG("bl_demura_mode =%d\n", bl_demura_mode);
-	mtk_drm_trace_end();
 
 	return 0;
 }
@@ -311,24 +202,12 @@ int oplus_ofp_property_update(int prop_id, unsigned int prop_val)
 
 
 /* -------------------- fod -------------------- */
-int oplus_ofp_send_hbm_state_event(unsigned int hbm_state)
-{
-	OFP_DEBUG("start\n");
-
-	lcdinfo_notify(DRM_PANEL_EVENT_HBM_STATE, &hbm_state);
-	OFP_INFO("DRM_PANEL_EVENT_HBM_STATE:%u\n", hbm_state);
-
-	OFP_DEBUG("end\n");
-
-	return 0;
-}
-
 /* wait te and delay while using cmdq */
-static int oplus_ofp_cmdq_pkt_wait(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, int te_count, int delay_us, bool hbm_en, bool before_hbm)
+static int oplus_ofp_cmdq_pkt_wait(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, int te_count, int delay_us)
 {
 	int wait_te_count = te_count;
 	struct drm_crtc *crtc;
-	struct mtk_ddp_comp *comp = NULL;
+
 	if ((wait_te_count <= 0) && (delay_us <= 0)) {
 		return 0;
 	}
@@ -339,60 +218,46 @@ static int oplus_ofp_cmdq_pkt_wait(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pk
 	}
 
 	crtc = &mtk_crtc->base;
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (!crtc || !comp || !comp->funcs || !comp->funcs->io_cmd) {
-		OFP_ERR("Invalid params\n");
+
+	if (!crtc) {
+		OFP_ERR("Invalid crtc params\n");
 		return -EINVAL;
 	}
 
 	mtk_drm_trace_begin("oplus_ofp_cmdq_pkt_wait");
 
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		if (cmdq_handle == NULL) {
-			mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base, mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (cmdq_handle == NULL) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base, mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	}
+
+	OFP_INFO("wait %d te and delay %dus\n", wait_te_count, delay_us);
+
+	if (wait_te_count > 0) {
+		if (mtk_crtc_with_event_loop(crtc)) {
+			cmdq_pkt_clear_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
+		} else {
+			cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_TE]);
 		}
 
-		OFP_INFO("wait %d te and delay %dus\n", wait_te_count, delay_us);
-
-		if (wait_te_count > 0) {
+		while (wait_te_count > 0) {
+			OFP_DEBUG("start to wait EVENT_TE, remain %d te count\n", wait_te_count);
 			if (mtk_crtc_with_event_loop(crtc)) {
-				cmdq_pkt_clear_event(cmdq_handle,
+				cmdq_pkt_wfe(cmdq_handle,
 						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
-			} else {
-				cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_TE]);
+			}  else {
+				cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_TE]);
 			}
-
-			while (wait_te_count > 0) {
-				OFP_DEBUG("start to wait EVENT_TE, remain %d te count\n", wait_te_count);
-				if (mtk_crtc_with_event_loop(crtc)) {
-						cmdq_pkt_wfe(cmdq_handle,
-						mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_TE]);
-				}  else {
-					cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_TE]);
-				}
-				OFP_DEBUG("complete the EVENT_TE waiting\n");
-				if (demura_setting.oplus_bl_demura_dbv_support && before_hbm && wait_te_count == 1) {
-					oplus_ofp_set_panel_hbm_witch_demura(mtk_crtc, cmdq_handle, hbm_en);
-				}
-				wait_te_count--;
-			}
-		}
-
-		if (delay_us > 0) {
-			OFP_DEBUG("start to sleep %d us", delay_us);
-			cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(delay_us), CMDQ_GPR_R14);
-		}
-	} else {
-		while (wait_te_count) {
-			mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+			OFP_DEBUG("complete the EVENT_TE waiting\n");
 			wait_te_count--;
-			comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
-		}
-		if (delay_us > 0) {
-			OFP_DEBUG("start to sleep %d us", delay_us);
-			cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(delay_us), CMDQ_GPR_R14);
 		}
 	}
+
+	if (delay_us > 0) {
+		OFP_DEBUG("start to sleep %d us", delay_us);
+		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(delay_us), CMDQ_GPR_R14);
+	}
+
 	mtk_drm_trace_end();
 
 	return 0;
@@ -428,16 +293,8 @@ static int oplus_ofp_hbm_wait_handle(struct drm_crtc *crtc, struct cmdq_pkt *cmd
 	}
 	mtk_drm_trace_begin("oplus_ofp_hbm_wait_handle");
 
-	if (oplus_ofp_video_mode_aod_fod_is_enabled()) {
-		refresh_rate = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	} else {
-		refresh_rate = panel_ext->dyn_fps.vact_timing_fps;
-	}
-
-	if (refresh_rate != 0)
-		us_per_frame = 1000000/refresh_rate;
-	else
-		us_per_frame = 1000000/120;
+	refresh_rate = panel_ext->dyn_fps.vact_timing_fps;
+	us_per_frame = 1000000/refresh_rate;
 
 	if (before_hbm) {
 		if (hbm_en) {
@@ -496,11 +353,7 @@ static int oplus_ofp_hbm_wait_handle(struct drm_crtc *crtc, struct cmdq_pkt *cmd
 			}
 		} else {
 			if (panel_ext->oplus_ofp_pre_hbm_off_delay) {
-				if(panel_ext->oplus_te_count) {
-					te_count = panel_ext->oplus_te_count;
-				} else {
-					te_count = 0;
-				}
+				te_count = 0;
 				/* the delay time bfore hbm off */
 				delay_us = panel_ext->oplus_ofp_pre_hbm_off_delay * 1000;
 
@@ -514,8 +367,6 @@ static int oplus_ofp_hbm_wait_handle(struct drm_crtc *crtc, struct cmdq_pkt *cmd
 				cmdq_pkt_flush(cmdq_handle2);
 				cmdq_pkt_destroy(cmdq_handle2);
 				mtk_drm_trace_end();
-			} else if (oplus_ofp_video_mode_aod_fod_is_enabled()) {
-				te_count = 1;
 			}
 		}
 	} else {
@@ -542,7 +393,7 @@ static int oplus_ofp_hbm_wait_handle(struct drm_crtc *crtc, struct cmdq_pkt *cmd
 			usleep_range(delay_us * 2, delay_us * 2 + 500);
 		}
 	}
-	ret = oplus_ofp_cmdq_pkt_wait(mtk_crtc, cmdq_handle, te_count, delay_us, hbm_en, before_hbm);
+	ret = oplus_ofp_cmdq_pkt_wait(mtk_crtc, cmdq_handle, te_count, delay_us);
 	if (ret) {
 		OFP_ERR("oplus_ofp_cmdq_pkt_wait failed\n");
 	}
@@ -610,13 +461,14 @@ static int oplus_ofp_set_panel_hbm(struct drm_crtc *crtc, bool hbm_en)
 	oplus_ofp_hbm_wait_handle(crtc, cmdq_handle, false, hbm_en);
 
 #ifdef OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION
-	if (oplus_temp_compensation_is_supported()) {
-		if (hbm_en) {
-			oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_ON_SETTING);
-		} else {
-			oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_OFF_SETTING);
-		}
+	/* set temp compensation paras */
+	mtk_drm_trace_begin("OPLUS_TEMP_COMPENSATION_SET");
+	if (hbm_en) {
+		oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_ON_SETTING);
+	} else {
+		oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_OFF_SETTING);
 	}
+	mtk_drm_trace_end();
 #endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
 
 	mtk_drm_trace_begin("mtk_drm_send_lcm_cmd_flush");
@@ -659,7 +511,7 @@ int oplus_ofp_hbm_handle(void *drm_crtc, void *mtk_crtc_state, void *cmdq_pkt)
 	hbm_en = state->prop_val[CRTC_PROP_HBM_ENABLE];
 	OFP_DEBUG("hbm_en = %d\n", hbm_en);
 
-	if (mtk_crtc_is_frame_trigger_mode(crtc) || oplus_ofp_video_mode_aod_fod_is_enabled()) {
+	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
 		if ((!state->prop_val[CRTC_PROP_DOZE_ACTIVE] && hbm_en > 0 && oplus_display_brightness != 0)
 			|| (state->prop_val[CRTC_PROP_DOZE_ACTIVE] && hbm_en > 1 && oplus_display_brightness != 0)) {
 			OFP_DEBUG("set hbm on\n");
@@ -794,11 +646,7 @@ int oplus_ofp_notify_uiready(void *mtk_drm_crtc)
 		if (p_oplus_ofp_params->aod_unlocking == true && p_oplus_ofp_params->notifier_chain_value == 1) {
 			/* check whether hbm is taking effect or not */
 			if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params) {
-				if (oplus_ofp_video_mode_aod_fod_is_enabled()) {
-					refresh_rate = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-				} else {
-					refresh_rate = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
-				}
+				refresh_rate = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 				delay_ms = mtk_crtc->panel_ext->params->oplus_ofp_hbm_on_delay + 1000/refresh_rate;
 			} else {
 				delay_ms = 17;
@@ -829,17 +677,10 @@ int oplus_ofp_notify_uiready(void *mtk_drm_crtc)
 }
 
 /* need filter backlight in hbm state and aod unlocking process */
-unsigned int hbm_force_off_when_backlight_0 = 0;
-EXPORT_SYMBOL(hbm_force_off_when_backlight_0);
 bool oplus_ofp_backlight_filter(int bl_level)
 {
 	bool need_filter_backlight = false;
 	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-	struct drm_crtc *crtc;
-	struct drm_device *ddev = get_drm_device();
-	int refresh_rate = 0;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-	int delay = 0;
 
 	OFP_DEBUG("start\n");
 
@@ -848,52 +689,16 @@ bool oplus_ofp_backlight_filter(int bl_level)
 		return -EINVAL;
 	}
 
-	/* this debug cmd only for crtc0 */
-	crtc = list_first_entry(&(ddev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-	if (!crtc) {
-		OFP_ERR("find crtc fail\n");
-		return -EINVAL;
-	}
-
-	mtk_crtc = to_mtk_crtc(crtc);
-	if (!mtk_crtc || !mtk_crtc->panel_ext || !mtk_crtc->panel_ext->params) {
-		OFP_ERR("falied to get lcd proc info\n");
-		return -EINVAL;
-	}
-
-	refresh_rate = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
-	if (refresh_rate == 120)
-		delay = VSYNC_PERIOD_120HZ * 2;
-	else if (refresh_rate == 90)
-		delay = VSYNC_PERIOD_90HZ * 2;
-	else if (refresh_rate == 60)
-		delay = VSYNC_PERIOD_60HZ * 2;
-
 	mtk_drm_trace_begin("oplus_ofp_backlight_filter");
 
 	if (oplus_ofp_get_hbm_state()) {
 		if (bl_level == 0) {
-			if (!strcmp(mtk_crtc->panel_ext->params->vendor, "22823_Tianma_NT37705")) {
-				OFP_INFO("backlight is 0, set hbm state to false,and flush hbm off cmd,delay %d us\n", delay);
-				if (p_oplus_ofp_params->aod_unlocking == true) {
-					p_oplus_ofp_params->aod_unlocking = false;
-					OFP_INFO("oplus_ofp_aod_unlocking: %d\n", p_oplus_ofp_params->aod_unlocking);
-					mtk_drm_trace_c("%d|oplus_ofp_aod_unlocking|%d", g_commit_pid, p_oplus_ofp_params->aod_unlocking);
-				}
-				hbm_force_off_when_backlight_0 = 1;
-				oplus_ofp_set_panel_hbm(crtc, false);
-				hbm_force_off_when_backlight_0 = 0;
-				oplus_ofp_set_hbm_state(false);
-				usleep_range(delay, delay+100);
-			} else {
-				oplus_ofp_set_hbm_state(false);
-				OFP_DEBUG("backlight is 0, set hbm state to false\n");
-				if (p_oplus_ofp_params->aod_unlocking == true) {
-					p_oplus_ofp_params->aod_unlocking = false;
-					OFP_INFO("oplus_ofp_aod_unlocking: %d\n", p_oplus_ofp_params->aod_unlocking);
-					mtk_drm_trace_c("%d|oplus_ofp_aod_unlocking|%d", g_commit_pid, p_oplus_ofp_params->aod_unlocking);
-				}
+			oplus_ofp_set_hbm_state(false);
+			OFP_DEBUG("backlight is 0, set hbm state to false\n");
+			if (p_oplus_ofp_params->aod_unlocking == true) {
+				p_oplus_ofp_params->aod_unlocking = false;
+				OFP_INFO("oplus_ofp_aod_unlocking: %d\n", p_oplus_ofp_params->aod_unlocking);
+				mtk_drm_trace_c("%d|oplus_ofp_aod_unlocking|%d", g_commit_pid, p_oplus_ofp_params->aod_unlocking);
 			}
 			need_filter_backlight = false;
 		} else {
@@ -971,7 +776,7 @@ int oplus_ofp_doze_status_handle(bool doze_enable, void *drm_crtc, void *mtk_pan
 		if (oplus_ofp_is_support()) {
 			/* hbm mode -> normal mode -> aod mode */
 			if (oplus_ofp_get_hbm_state() == true) {
-				if (mtk_crtc_is_frame_trigger_mode(crtc) || oplus_ofp_video_mode_aod_fod_is_enabled()) {
+				if (mtk_crtc_is_frame_trigger_mode(crtc)) {
 					struct mtk_panel_ext *ext = mtk_panel_ext;
 
 					mtk_drm_trace_begin("oplus_ofp_hbm_off_before_doze_enable");
@@ -1037,8 +842,6 @@ int oplus_ofp_aod_off_set_cmdq(struct drm_crtc *crtc)
 {
 	bool is_frame_mode;
 	int i, j;
-	int retry = 0;
-	s32 cmdq_ret;
 	bool doze_en = false;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp, *comp;
@@ -1071,21 +874,13 @@ int oplus_ofp_aod_off_set_cmdq(struct drm_crtc *crtc)
 		return -ENODEV;
 	}
 
-	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	if (!mtk_crtc->enabled) {
 		/* power on mtcmos */
 		mtk_drm_trace_begin("power_on_mtcmos");
 		mtk_drm_top_clk_prepare_enable(crtc->dev);
 
-		cmdq_ret = cmdq_mbox_enable(client->chan);
-		while (cmdq_ret < 0 && retry < 2000) {
-			usleep_range(500, 510);
-			cmdq_ret = cmdq_mbox_enable(client->chan);
-			retry++;
-		}
-		OFP_DEBUG("cmdq mbox enable successes after %d times\n", retry);
-
+		cmdq_mbox_enable(client->chan);
 		if (mtk_crtc_with_event_loop(crtc) &&
 				(mtk_crtc_is_frame_trigger_mode(crtc)))
 			mtk_crtc_start_event_loop(crtc);
@@ -1224,7 +1019,7 @@ int oplus_ofp_aod_off_set(void)
 {
 	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
 
-	if (!p_oplus_ofp_params || oplus_ofp_video_mode_aod_fod_is_enabled()) {
+	if (!p_oplus_ofp_params) {
 		OFP_ERR("Invalid params\n");
 		return -EINVAL;
 	}
@@ -1258,7 +1053,7 @@ int oplus_ofp_touchpanel_event_notifier_call(struct notifier_block *nb, unsigned
 {
 	struct touchpanel_event *tp_event = (struct touchpanel_event *)data;
 
-	if (!oplus_ofp_is_support() || oplus_ofp_video_mode_aod_fod_is_enabled()) {
+	if (!oplus_ofp_is_support()) {
 		OFP_DEBUG("no need to send aod off cmd in doze mode to speed up fingerprint unlocking\n");
 		return NOTIFY_OK;
 	}
@@ -1470,7 +1265,7 @@ int oplus_ofp_notify_fp_press(void *buf)
 	mtk_drm_trace_c("%d|oplus_ofp_fp_press|%d", g_commit_pid, p_oplus_ofp_params->fp_press);
 
 
-	if (oplus_ofp_is_support() && p_oplus_ofp_params->fp_press && !oplus_ofp_video_mode_aod_fod_is_enabled()) {
+	if (oplus_ofp_is_support() && p_oplus_ofp_params->fp_press) {
 		/* send aod off cmd in doze mode to speed up fingerprint unlocking */
 		OFP_DEBUG("fp press is true\n");
 		oplus_ofp_aod_off_set();
@@ -1506,7 +1301,7 @@ ssize_t oplus_ofp_notify_fp_press_attr(struct kobject *obj, struct kobj_attribut
 	mtk_drm_trace_c("%d|oplus_ofp_fp_press|%d", g_commit_pid, p_oplus_ofp_params->fp_press);
 
 
-	if (oplus_ofp_is_support() && p_oplus_ofp_params->fp_press && !oplus_ofp_video_mode_aod_fod_is_enabled()) {
+	if (oplus_ofp_is_support() && p_oplus_ofp_params->fp_press) {
 		/* send aod off cmd in doze mode to speed up fingerprint unlocking */
 		OFP_DEBUG("fp press is true\n");
 		oplus_ofp_aod_off_set();
@@ -1546,15 +1341,16 @@ int oplus_ofp_drm_set_hbm(struct drm_crtc *crtc, unsigned int hbm_mode)
 		mtk_drm_trace_end();
 
 #ifdef OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION
-		if (oplus_temp_compensation_is_supported()) {
-			if (hbm_mode) {
-				oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_ON_SETTING);
-			} else {
-				oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_OFF_SETTING);
-			}
+		/* set temp compensation paras */
+		mtk_drm_trace_begin("OPLUS_TEMP_COMPENSATION_SET");
+		if (hbm_mode) {
+			oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_ON_SETTING);
+		} else {
+			oplus_temp_compensation_io_cmd_set(comp, cmdq_handle, OPLUS_TEMP_COMPENSATION_FOD_OFF_SETTING);
 		}
-#endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
+		mtk_drm_trace_end();
 	}
+#endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
 
 	mtk_drm_trace_begin("mtk_drm_send_lcm_cmd_flush");
 	mtk_drm_send_lcm_cmd_flush(crtc, &cmdq_handle, 0);
@@ -1679,7 +1475,10 @@ int oplus_ofp_set_aod_light_mode(void *buf)
 	OFP_INFO("aod_light_mode:%u\n", p_oplus_ofp_params->aod_light_mode);
 	mtk_drm_trace_c("%d|oplus_ofp_aod_light_mode|%d", g_commit_pid, p_oplus_ofp_params->aod_light_mode);
 
-	if (!oplus_ofp_get_aod_state()) {
+	if (!oplus_ofp_is_support()) {
+		OFP_DEBUG("aod is not supported\n");
+		return 0;
+	} else if (!oplus_ofp_get_aod_state()) {
 		OFP_ERR("not in aod mode, should not set aod_light_mode\n");
 		return 0;
 	} else if (oplus_ofp_get_hbm_state()) {
@@ -1737,7 +1536,10 @@ ssize_t oplus_ofp_set_aod_light_mode_attr(struct kobject *obj,
 	OFP_INFO("aod_light_mode:%u\n", p_oplus_ofp_params->aod_light_mode);
 	mtk_drm_trace_c("%d|oplus_ofp_aod_light_mode|%d", g_commit_pid, p_oplus_ofp_params->aod_light_mode);
 
-	if (!oplus_ofp_get_aod_state()) {
+	if (!oplus_ofp_is_support()) {
+		OFP_DEBUG("aod is not supported\n");
+		return count;
+	} else if (!oplus_ofp_get_aod_state()) {
 		OFP_ERR("not in aod mode, should not set aod_light_mode\n");
 		return count;
 	} else if (oplus_ofp_get_hbm_state()) {
@@ -1773,106 +1575,6 @@ ssize_t oplus_ofp_get_aod_light_mode_attr(struct kobject *obj,
 	return sprintf(buf, "%u\n", p_oplus_ofp_params->aod_light_mode);
 }
 
-int oplus_ofp_set_fake_aod(void *buf)
-{
-	unsigned int *fake_aod_mode = buf;
-	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-
-	OFP_DEBUG("start\n");
-
-	if (!buf || !p_oplus_ofp_params) {
-		OFP_ERR("Invalid params\n");
-		return -EINVAL;
-	}
-
-	mtk_drm_trace_begin("oplus_ofp_set_fake_aod");
-
-	p_oplus_ofp_params->fake_aod_mode = *fake_aod_mode;
-	OFP_INFO("fake_aod_mode:%u\n", p_oplus_ofp_params->fake_aod_mode);
-	mtk_drm_trace_c("%d|oplus_ofp_fake_aod_mode|%d", g_commit_pid, p_oplus_ofp_params->fake_aod_mode);
-
-	mtk_drm_trace_end();
-
-	OFP_DEBUG("end\n");
-
-	return 0;
-}
-
-int oplus_ofp_get_fake_aod(void *buf)
-{
-	unsigned int *fake_aod_mode = buf;
-	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-
-	OFP_DEBUG("start\n");
-
-	if (!buf || !p_oplus_ofp_params) {
-		OFP_ERR("Invalid params\n");
-		return -EINVAL;
-	}
-
-	mtk_drm_trace_begin("oplus_ofp_get_fake_aod");
-
-	*fake_aod_mode = p_oplus_ofp_params->fake_aod_mode;
-	OFP_INFO("fake_aod_mode:%u\n", *fake_aod_mode);
-
-	mtk_drm_trace_end();
-
-	OFP_DEBUG("end\n");
-
-	return 0;
-}
-
-ssize_t oplus_ofp_set_fake_aod_attr(struct kobject *obj,
-	struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	unsigned int fake_aod_mode = 0;
-	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-
-	OFP_DEBUG("start\n");
-
-	if (!buf || !p_oplus_ofp_params) {
-		OFP_ERR("Invalid params\n");
-		return count;
-	}
-
-	mtk_drm_trace_begin("oplus_ofp_set_fake_aod_attr");
-
-	sscanf(buf, "%u", &fake_aod_mode);
-
-	p_oplus_ofp_params->fake_aod_mode = fake_aod_mode;
-	OFP_INFO("fake_aod_mode:%u\n", p_oplus_ofp_params->fake_aod_mode);
-	mtk_drm_trace_c("%d|oplus_ofp_fake_aod_mode|%d", g_commit_pid, p_oplus_ofp_params->fake_aod_mode);
-
-	mtk_drm_trace_end();
-
-	OFP_DEBUG("end\n");
-
-	return count;
-}
-
-ssize_t oplus_ofp_get_fake_aod_attr(struct kobject *obj,
-	struct kobj_attribute *attr, char *buf)
-{
-	struct oplus_ofp_params *p_oplus_ofp_params = oplus_ofp_get_params();
-
-	OFP_DEBUG("start\n");
-
-	if (!buf || !p_oplus_ofp_params) {
-		OFP_ERR("Invalid params\n");
-		return -EINVAL;
-	}
-
-	mtk_drm_trace_begin("oplus_ofp_get_fake_aod_attr");
-
-	OFP_INFO("fake_aod_mode:%u\n", p_oplus_ofp_params->fake_aod_mode);
-
-	mtk_drm_trace_end();
-
-	OFP_DEBUG("end\n");
-
-	return sprintf(buf, "%u\n", p_oplus_ofp_params->fake_aod_mode);
-}
-
-MODULE_AUTHOR("Liuhe Zhong <zhongliuhe@oplus.com>");
+MODULE_AUTHOR("Liuhe Zhong");
 MODULE_DESCRIPTION("OPLUS ofp device");
 MODULE_LICENSE("GPL v2");

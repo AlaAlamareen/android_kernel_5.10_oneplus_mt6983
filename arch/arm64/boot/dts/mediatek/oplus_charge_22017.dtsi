@@ -296,11 +296,6 @@
 	qcom,default_temp_little_cool_vfloat_mv = <4435>;
 	qcom,default_little_cool_vfloat_over_sw_limit = <4445>;
 
-	oplus,poweroff_high_batt_temp = <720>;
-	oplus,poweroff_emergency_batt_temp = <770>;
-	oplus,usbtemp_batt_temp_over_hot = <60>;
-	oplus,usbtemp_temp_gap_with_batt_temp_in_over_hot = <15>;
-
 	//for PD9V or QC9V
 	qcom,vbatt_pdqc_to_5v_thr = <4435>;
 	qcom,vbatt_pdqc_to_9v_thr = <4435>;
@@ -331,16 +326,11 @@
 	qcom,vooc_show_ui_soc_decimal;
 	qcom,ui_soc_decimal_speedmin = <20>;//2A
 	qcom,ccdetect_by_wd0;
-	oplus,boot_reset_adapter;
 	//GPIO config:
 	qcom,chargerid_switch-gpio = <&pio 23 0x00>;
 
 	qcom,vooc-max-input-volt-support = <11000>;     //10V
 	qcom,vooc-max-input-current-support = <3000>;   //6.5A
-
-	oplus,switch2-ctrl-gpio = <&pio 21 0x00>;
-	oplus,uart_tx-gpio = <&pio 89 0x00>;
-	oplus,uart_rx-gpio = <&pio 88 0x00>;
 };
 
 /*#ifdef OPLUS_FEATURE_CHG_BASIC*/
@@ -376,7 +366,6 @@
 		status = "okay";
 		compatible = "sc,sc8547-master";
 		reg = <0x6F 0>;
-                ovp_reg = <0x36>; /* vbat_ovp:4.85V */
 
 		qcom,irq_gpio = <&pio 10 0x00>;
 		interrupt-parent = <&pio>;
@@ -620,7 +609,6 @@
 		status = "okay";
 		compatible = "sc,sc8547-slave";
 		reg = <0x6F 0>;
-                ovp_reg = <0x36>; /* vbat_ovp:4.85V */
 	};
 };
 
@@ -636,7 +624,7 @@
 	i2c7_i2c_scl_state: i2c7_scl_i2c_state {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO29__FUNC_SCL7>;
-			bias-pull-up = <MTK_PULL_SET_RSEL_010>;
+			bias-pull-up;
 		};
 	};
 	i2c7_scl_output_low_state: i2c7_scl_output_low_state {
@@ -649,7 +637,7 @@
 	i2c7_i2c_sda_state: i2c7_sda_i2c_state {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO30__FUNC_SDA7>;
-			bias-pull-up = <MTK_PULL_SET_RSEL_010>;
+			bias-pull-up;
 		};
 	};
 	i2c7_sda_output_low_state: i2c7_sda_output_low_state {
@@ -671,13 +659,21 @@
 		qcom,modify-soc-smooth;
 		qcom,gauge_num = <0>;
 		qcom,sha1_key_index = <2>;
-
-		zy,gauge-fix-cadc;
-		zy,gauge-cal-board;
-		zy,gauge-check-model;
-		zy,gauge-check-por;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c7_mode_default>;
+		//qcom,bq28z610_need_balancing;
 		battery_params {
 			#include "oplus_charge_22017_blp973_afi.dtsi"
+		};
+	};
+};
+
+&pio {
+	i2c7_mode_default: i2c7_mode_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO29__FUNC_SCL7>,
+				<PINMUX_GPIO30__FUNC_SDA7>;
+			bias-pull-up = <MTK_PULL_SET_RSEL_010>;
 		};
 	};
 };
@@ -744,7 +740,6 @@
 };
 
 &lk_charger {
-	en_vol_ctrl_vibrate = <3200>;
 	single_batt_external_gauge_support;
 	support_tuv_authentication;
 	led_brightness = <102>;
@@ -752,10 +747,6 @@
 	charger_no_wiress;
 	sub_board_temp_support;
 	support_sdp_screenoff;
-
-	high-temp-scheme;
-	over_high_temp_thr = <60>;
-
 	support_battery_type = <2>;  /* BATTERY_4P45V_SINGLE */
 	max_charger_voltage = <15000000>;
 	boot_battery_voltage = <3400000>;
@@ -766,8 +757,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-	is_support_mt6375;
-	support_zy0602_gauge;
 };
 
 &odm {
@@ -778,16 +767,5 @@
 		track,voocphy_type = <3>;
 		track,wired_max_power = <67000>;
 		track,wired_fast_chg_scheme = <2>;
-		track,gauge_status_ctrl;
-		track,nominal_qmax1 = <4535>;
-		track,nominal_fcc1 = <4440>;
-		track,external_gauge_num = <1>;
-	};
-};
-
-&soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
 	};
 };

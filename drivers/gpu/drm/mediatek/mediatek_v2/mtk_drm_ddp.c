@@ -36,7 +36,6 @@
 #ifdef CONFIG_MTK_SMI_EXT
 #include "smi_public.h"
 #endif
-#include "oplus_display_onscreenfingerprint.h"
 #ifdef OPLUS_FEATURE_DISPLAY
 #include "mtk_drm_trace.h"
 extern int g_commit_pid;
@@ -13725,13 +13724,9 @@ void mtk_disp_mutex_submit_sof(struct mtk_disp_mutex *mutex)
 	}
 }
 
-#ifdef OPLUS_FEATURE_DISPLAY_APOLLO
-unsigned long long mutex_sof_ns = 0;
-#endif /* OPLUS_FEATURE_DISPLAY_APOLLO */
 static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_ddp *ddp = dev_id;
-	struct mtk_drm_crtc *mtk_crtc = ddp->mtk_crtc[0];
 	unsigned int val = 0;
 	unsigned int m_id = 0;
 	int ret = 0;
@@ -13774,20 +13769,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		if (val & (0x1 << m_id)) {
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
 			DRM_MMP_MARK(mutex[m_id], val, 0);
-//#ifdef OPLUS_FEATURE_DISPLAY_ONSCREENFINGERPRINT
-			if (oplus_ofp_is_support()) {
-					if (oplus_ofp_video_mode_aod_fod_is_enabled()) {
-						oplus_ofp_pressed_icon_status_update(OPLUS_OFP_TE_RDY);
-						oplus_ofp_aod_off_hbm_on_delay_check(mtk_crtc);
-						/* send ui ready */
-						oplus_ofp_notify_uiready(mtk_crtc);
-					}
-			}
-//#endif
-
-#ifdef OPLUS_FEATURE_DISPLAY_APOLLO
-			mutex_sof_ns = ktime_get();
-#endif /* OPLUS_FEATURE_DISPLAY_APOLLO */
 #ifdef OPLUS_FEATURE_DISPLAY
 			mtk_drm_trace_c("%d|smutex sof|%d", g_commit_pid, 1);
 			mtk_drm_trace_c("%d|smutex sof|%d", g_commit_pid, 0);

@@ -20,15 +20,7 @@
 #include <linux/sysfs.h>
 #include <linux/module.h>
 #include <linux/init.h>
-#include <linux/ktime.h>
 
-#define BACKLIGHT_CACHE_MAX 50
-
-enum oplus_display_id {
-	DISPLAY_PRIMARY = 0,
-	DISPLAY_SECONDARY = 1,
-	DISPLAY_MAX,
-};
 enum {
 	MTK_LOG_LEVEL_MOBILE_LOG = 0x1,
 	MTK_LOG_LEVEL_DETAIL_LOG = 0x2,
@@ -44,12 +36,6 @@ enum oplus_disp_drv_log_level {
 	OPLUS_DISP_DRV_LOG_LEVEL_INFO = 2,
 	OPLUS_DISP_DRV_LOG_LEVEL_DEBUG = 3,
 };
-
-static struct backlight_log {
-	u32 bl_count;
-	unsigned int backlight[BACKLIGHT_CACHE_MAX];
-	struct timespec64 past_times[BACKLIGHT_CACHE_MAX];
-}oplus_bl_log[DISPLAY_MAX];
 
 /* log level config */
 extern int oplus_disp_drv_log_level;

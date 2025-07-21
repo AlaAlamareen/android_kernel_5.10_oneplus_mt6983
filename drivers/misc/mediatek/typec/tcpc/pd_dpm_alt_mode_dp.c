@@ -596,8 +596,6 @@ static inline bool dp_dfp_u_update_dp_connected(struct pd_port *pd_port)
 				TCP_DPM_EVT_DP_STATUS_UPDATE);
 		}
 		break;
-	default:
-		break;
 	}
 
 	return valid_connected;
@@ -709,8 +707,6 @@ bool dp_dfp_u_notify_attention(struct pd_port *pd_port,
 
 	case DP_DFP_U_OPERATION:
 		tcpci_dp_attention(tcpc, dp_data->remote_status);
-		break;
-	default:
 		break;
 	}
 
@@ -862,8 +858,6 @@ bool dp_ufp_u_is_valid_dp_config(struct pd_port *pd_port, uint32_t dp_config)
 			(MODE_DP_PORT_CAP(local_mode) & MODE_DP_SNK))
 			retval = true;
 		break;
-	default:
-		break;
 	}
 
 	return retval;
@@ -905,8 +899,6 @@ static inline int dp_ufp_u_request_dp_config(struct pd_port *pd_port)
 			dp_ufp_u_auto_attention(pd_port);
 			dp_ufp_u_set_state(pd_port, DP_UFP_U_OPERATION);
 		}
-		break;
-	default:
 		break;
 	}
 

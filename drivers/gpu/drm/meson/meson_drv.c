@@ -320,38 +320,38 @@ static int meson_drv_bind_master(struct device *dev, bool has_components)
 	if (priv->afbcd.ops) {
 		ret = priv->afbcd.ops->init(priv);
 		if (ret)
-			goto free_drm;
+			return ret;
 	}
 
 	/* Encoder Initialization */
 
 	ret = meson_venc_cvbs_create(priv);
 	if (ret)
-		goto exit_afbcd;
+		goto free_drm;
 
 	if (has_components) {
 		ret = component_bind_all(drm->dev, drm);
 		if (ret) {
 			dev_err(drm->dev, "Couldn't bind all components\n");
-			goto exit_afbcd;
+			goto free_drm;
 		}
 	}
 
 	ret = meson_plane_create(priv);
 	if (ret)
-		goto unbind_all;
+		goto free_drm;
 
 	ret = meson_overlay_create(priv);
 	if (ret)
-		goto unbind_all;
+		goto free_drm;
 
 	ret = meson_crtc_create(priv);
 	if (ret)
-		goto unbind_all;
+		goto free_drm;
 
 	ret = drm_irq_install(drm, priv->vsync_irq);
 	if (ret)
-		goto unbind_all;
+		goto free_drm;
 
 	drm_mode_config_reset(drm);
 
@@ -369,12 +369,6 @@ static int meson_drv_bind_master(struct device *dev, bool has_components)
 
 uninstall_irq:
 	drm_irq_uninstall(drm);
-unbind_all:
-	if (has_components)
-		component_unbind_all(drm->dev, drm);
-exit_afbcd:
-	if (priv->afbcd.ops)
-		priv->afbcd.ops->exit(priv);
 free_drm:
 	drm_dev_put(drm);
 
@@ -534,13 +528,6 @@ static int meson_drv_probe(struct platform_device *pdev)
 	return 0;
 };
 
-static int meson_drv_remove(struct platform_device *pdev)
-{
-	component_master_del(&pdev->dev, &meson_drv_master_ops);
-
-	return 0;
-}
-
 static struct meson_drm_match_data meson_drm_gxbb_data = {
 	.compat = VPU_COMPATIBLE_GXBB,
 };
@@ -578,7 +565,6 @@ static const struct dev_pm_ops meson_drv_pm_ops = {
 
 static struct platform_driver meson_drm_platform_driver = {
 	.probe      = meson_drv_probe,
-	.remove     = meson_drv_remove,
 	.shutdown   = meson_drv_shutdown,
 	.driver     = {
 		.name	= "meson-drm",

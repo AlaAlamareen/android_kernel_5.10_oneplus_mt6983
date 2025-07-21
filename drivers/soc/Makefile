@@ -45,7 +45,6 @@ obj-y += oplus/boot/
 obj-y += oplus/dft/
 #endif /* OPLUS_DFT_FEATURE */
 
-obj-$(CONFIG_UA_KERNEL_CPU_IOCTL) += oplus/uad/
 #ifdef OPLUS_FEATURE_HANS
 obj-$(CONFIG_OPLUS_FEATURE_HANS_GKI)	+= oplus/hans/
 #endif /* OPLUS_FEATURE_HANS */
@@ -60,7 +59,3 @@ obj-$(CONFIG_OPLUS_FEATURE_MIDAS_GKI)	+= oplus/midas/
 #ifdef OPLUS_FEATURE_MM_FEEDBACK
 obj-$(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)	+= oplus/oplus_mm_fb/
 #endif /* OPLUS_FEATURE_MM_FEEDBACK */
-
-#ifdef OPLUS_FEATURE_STORAGE_IO_METRICS
-obj-y				+= oplus/storage/
-#endif /*OPLUS_FEATURE_STORAGE_IO_METRICS*/

@@ -296,7 +296,6 @@ static struct imgsensor_info_struct imgsensor_info = {
     .ihdr_support = 0,    /* 1, support; 0,not support */
     .ihdr_le_firstline = 0,    /* 1,le first ; 0, se first */
     .sensor_mode_num = 15,    /*support sensor mode num*/
-    .frame_time_delay_frame = 3,
 
     .cap_delay_frame = 2,  /*3 guanjd modify for cts*/
     .pre_delay_frame = 2,  /*3 guanjd modify for cts*/
@@ -6188,7 +6187,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
     UINT16 *feature_data_16 = (UINT16 *) feature_para;
     UINT32 *feature_return_para_32 = (UINT32 *) feature_para;
     UINT32 *feature_data_32 = (UINT32 *) feature_para;
-    UINT32 *pScenarios;
     unsigned long long *feature_data = (unsigned long long *) feature_para;
     UINT32 *pAeCtrls;
     /* unsigned long long *feature_return_para
@@ -6705,27 +6703,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
         seamless_switch(ctx, (*feature_data), pAeCtrls);
     }
         break;
-    case SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS:
-        if ((feature_data + 1) != NULL)
-            pScenarios = (MUINT32 *)((uintptr_t)(*(feature_data + 1)));
-        else {
-            LOG_INF("input pScenarios vector is NULL!\n");
-            return ERROR_INVALID_SCENARIO_ID;
-        }
-        switch (*feature_data) {
-        case SENSOR_SCENARIO_ID_CUSTOM6:
-            *pScenarios = SENSOR_SCENARIO_ID_CUSTOM7;
-            break;
-        case SENSOR_SCENARIO_ID_CUSTOM7:
-            *pScenarios = SENSOR_SCENARIO_ID_CUSTOM6;
-            break;
-        default:
-            *pScenarios = 0xff;
-            break;
-        }
-        LOG_INF("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %d %d\n",
-                *feature_data, *pScenarios);
-        break;
     case SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY:
         /*
             HDR_NONE = 0,
@@ -6753,14 +6730,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
         }
         LOG_INF("SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY scenarioId:%llu, HDR:%llu\n",
             *feature_data, *(feature_data+1));
-        break;
-    case SENSOR_FEATURE_GET_EXPOSURE_COUNT_BY_SCENARIO:
-        if (*feature_data == SENSOR_SCENARIO_ID_CUSTOM7 ||
-            *feature_data == SENSOR_SCENARIO_ID_CUSTOM9) {
-            *(feature_data + 1) = 2;  /* 2DOL */
-        } else {
-            *(feature_data + 1) = 1;  /* 1DOL */
-        }
         break;
     case SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO:
         if (*feature_data == SENSOR_SCENARIO_ID_CUSTOM8) {
@@ -7342,7 +7311,7 @@ static const struct subdrv_ctx defctx = {
     .exposure_max = 0xffff - 24,
     .exposure_min = 8,
     .exposure_step = 1,
-    .frame_time_delay_frame = 3,
+    //.frame_time_delay_frame = None,
     .is_hflip = 1,
     .is_vflip = 1,
     .margin = 24,

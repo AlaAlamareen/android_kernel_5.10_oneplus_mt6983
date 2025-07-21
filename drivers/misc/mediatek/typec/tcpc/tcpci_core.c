@@ -500,13 +500,8 @@ int tcpc_device_irq_enable(struct tcpc_device *tcpc)
 		return ret;
 	}
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	schedule_delayed_work(
-		&tcpc->event_init_work, msecs_to_jiffies(0));
-#else
 	schedule_delayed_work(
 		&tcpc->event_init_work, msecs_to_jiffies(10*1000));
-#endif
 
 	pr_info("%s : tcpc irq enable OK!\n", __func__);
 	return 0;

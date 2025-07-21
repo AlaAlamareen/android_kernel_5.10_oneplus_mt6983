@@ -18,7 +18,6 @@
 #include "ufshcd.h"
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-dbg.h"
-#include "ufshcd-add-info.h"
 
 #define MAX_CMD_HIST_ENTRY_CNT (500)
 #define UFS_AEE_BUFFER_SIZE (100 * 1024)
@@ -37,8 +36,6 @@ static unsigned int cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 static struct cmd_hist_struct *cmd_hist;
 static struct ufs_hba *ufshba;
 static char *ufs_aee_buffer;
-int ufsplus_wb_status = 0;
-int ufsplus_hpb_status = 0;
 
 static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 				  struct seq_file *m, u32 id,
@@ -395,21 +392,6 @@ out_unlock:
 	spin_unlock_irqrestore(&cmd_hist_lock, flags);
 }
 
-#ifdef CONFIG_SCSI_UFS_HPB
-static bool is_ufshpb_allowed(struct ufs_hba *hba)
-{
-     struct ufs_hba_add_info *hpb_devinfo;
-     hpb_devinfo = container_of(hba, struct ufs_hba_add_info, hba);
-     return !hpb_devinfo->hpb_dev.hpb_disabled;
-}
-#else
-static bool is_ufshpb_allowed(struct ufs_hba *hba)
-{
-	pr_warn("ufshpb macro definition is not opened\n");
-	return false;
-}
-#endif
-
 //bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
 /*feature-devinfo-v001-1-begin*/
 #ifdef OPLUS_DEVINFO_UFS
@@ -419,7 +401,6 @@ static int create_devinfo_ufs(struct scsi_device *sdev)
 	static char vendor[9] = {0};
 	static char model[17] = {0};
 	int ret = 0;
-	struct ufs_hba *hba = NULL;
 
 	pr_info("get ufs device vendor/model/rev\n");
 	WARN_ON(!sdev);
@@ -438,18 +419,6 @@ static int create_devinfo_ufs(struct scsi_device *sdev)
 
 	if (ret) {
 		pr_err("%s create ufs fail, ret=%d",__func__,ret);
-	}
-
-	hba = shost_priv(sdev->host);
-	if (hba && ufshcd_is_wb_allowed(hba)) {
-		ufsplus_wb_status = 1;
-	}
-	if (hba && is_ufshpb_allowed(hba)) {
-		ufsplus_hpb_status = 1;
-	}
-	ret = register_device_proc_for_ufsplus("ufsplus_status", &ufsplus_hpb_status, &ufsplus_wb_status);
-	if (ret) {
-		pr_err("%s create , ret=%d",__func__,ret);
 	}
 
 	return ret;

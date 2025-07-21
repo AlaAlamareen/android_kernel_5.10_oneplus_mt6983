@@ -132,4 +132,3 @@ obj-$(CONFIG_PAGE_REPORTING) += page_reporting.o
 #ifdef OPLUS_FEATURE_PERFORMANCE_MM
 obj-$(CONFIG_OPLUS_FEATURE_PERFORMANCE_MM) += oplus_mm/
 #endif /* OPLUS_FEATURE_PERFORMANCE_MM */
-obj-$(CONFIG_CONT_PTE_HUGEPAGE) += cont_pte_hugepage.o

@@ -9,9 +9,6 @@
 #include <linux/f2fs_fs.h>
 #include <linux/bio.h>
 #include <linux/blkdev.h>
-#ifdef CONFIG_F2FS_FASTDISCARD
-#include <linux/blk_types.h>
-#endif
 #include <linux/prefetch.h>
 #include <linux/kthread.h>
 #include <linux/swap.h>
@@ -539,14 +536,8 @@ void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi, bool from_bg)
 		return;
 
 	/* try to shrink extent cache when there is no enough memory */
-	if (!f2fs_available_free_memory(sbi, READ_EXTENT_CACHE))
-		f2fs_shrink_read_extent_tree(sbi,
-				READ_EXTENT_CACHE_SHRINK_NUMBER);
-
-	/* try to shrink age extent cache when there is no enough memory */
-	if (!f2fs_available_free_memory(sbi, AGE_EXTENT_CACHE))
-		f2fs_shrink_age_extent_tree(sbi,
-				AGE_EXTENT_CACHE_SHRINK_NUMBER);
+	if (!f2fs_available_free_memory(sbi, EXTENT_CACHE))
+		f2fs_shrink_extent_tree(sbi, EXTENT_CACHE_SHRINK_NUMBER);
 
 	/* check the # of cached NAT entries */
 	if (!f2fs_available_free_memory(sbi, NAT_ENTRIES))
@@ -582,7 +573,7 @@ do_sync:
 		mutex_lock(&sbi->flush_lock);
 
 		blk_start_plug(&plug);
-		f2fs_sync_dirty_inodes(sbi, FILE_INODE, NULL);
+		f2fs_sync_dirty_inodes(sbi, FILE_INODE);
 		blk_finish_plug(&plug);
 
 		mutex_unlock(&sbi->flush_lock);
@@ -1015,10 +1006,6 @@ static struct discard_cmd *__create_discard_cmd(struct f2fs_sb_info *sbi,
 	dc->state = D_PREP;
 	dc->queued = 0;
 	dc->error = 0;
-#ifdef CONFIG_F2FS_FASTDISCARD
-	dc->bio_time = 0;
-	dc->dc_private = dcc;
-#endif
 	init_completion(&dc->wait);
 	list_add_tail(&dc->list, pend_list);
 	spin_lock_init(&dc->lock);
@@ -1086,10 +1073,6 @@ static void __remove_discard_cmd(struct f2fs_sb_info *sbi,
 			"%sF2FS-fs (%s): Issue discard(%u, %u, %u) failed, ret: %d",
 			KERN_INFO, sbi->sb->s_id,
 			dc->lstart, dc->start, dc->len, dc->error);
-#ifdef CONFIG_F2FS_FASTDISCARD
-	if (dc->error)
-		atomic_inc(&dcc->discard_fail_nums);
-#endif
 	__detach_discard_cmd(dcc, dc);
 }
 
@@ -1097,44 +1080,12 @@ static void f2fs_submit_discard_endio(struct bio *bio)
 {
 	struct discard_cmd *dc = (struct discard_cmd *)bio->bi_private;
 	unsigned long flags;
-#ifdef CONFIG_F2FS_FASTDISCARD
-	unsigned long dcc_flags;
-	unsigned long bio_end_time = 0;
-	struct discard_cmd_control *dcc = (struct discard_cmd_control *)dc->dc_private;
-#endif
 
 	spin_lock_irqsave(&dc->lock, flags);
 	if (!dc->error)
 		dc->error = blk_status_to_errno(bio->bi_status);
-#ifdef CONFIG_F2FS_FASTDISCARD
-	if (dc->error) {
-		atomic_inc(&dcc->discard_fail_nums);
-	}
-#endif
 	dc->bio_ref--;
 	if (!dc->bio_ref && dc->state == D_SUBMIT) {
-#ifdef CONFIG_F2FS_FASTDISCARD
-		spin_lock_irqsave(&dcc->lock, dcc_flags);
-		bio_end_time = ktime_get_ns();
-		dc->bio_time = (bio_end_time - dc->bio_time) / DEF_DISCARD_NS_TO_US;
-
-		if (dc->bio_time <= 0)
-			goto next;
-
-		if (dc->bio_time > dcc->discard_maxtime_us)
-			dcc->discard_maxtime_us = dc->bio_time;
-
-		dcc->discard_num++;
-		if (dc->len <= DEFAULT_DISCARD_GRANULARITY) {
-			dcc->total_discard_blks +=dc->len;
-			if (dcc->screen_on) {
-				dcc->screen_on_discard_blks +=dc->len;
-			}
-		}
-		dcc->discard_sumtime_us += dc->bio_time;
-next:
-		spin_unlock_irqrestore(&dcc->lock, dcc_flags);
-#endif
 		dc->state = D_DONE;
 		complete_all(&dc->wait);
 	}
@@ -1189,11 +1140,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
 		dpolicy->min_interval = DEF_MIN_DISCARD_ISSUE_TIME;
 		dpolicy->mid_interval = DEF_MID_DISCARD_ISSUE_TIME;
 		dpolicy->max_interval = DEF_MAX_DISCARD_ISSUE_TIME;
-#ifdef CONFIG_F2FS_DEBUG_FASTDISCARD
-		dpolicy->io_aware = dcc->io_aware;
-#else
 		dpolicy->io_aware = true;
-#endif
 		dpolicy->sync = false;
 		dpolicy->ordered = true;
 		if (utilization(sbi) > DEF_DISCARD_URGENT_UTIL) {
@@ -1210,41 +1157,12 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
 	} else if (discard_type == DPOLICY_FSTRIM) {
 		dpolicy->io_aware = false;
 	} else if (discard_type == DPOLICY_UMOUNT) {
-#ifdef CONFIG_F2FS_FASTDISCARD
-		if (f2fs_support_fastdiscard(sbi))
-			dpolicy->max_requests = dcc->discard_issue_umount;
-#endif
 		dpolicy->io_aware = false;
 		/* we need to issue all to keep CP_TRIMMED_FLAG */
 		dpolicy->granularity = 1;
 		dpolicy->timeout = true;
 	}
-#ifdef CONFIG_F2FS_DEBUG_FASTDISCARD
-	dcc->sys_discard_granularity = dpolicy->granularity;
-#endif
 }
-
-#ifdef CONFIG_F2FS_FASTDISCARD
-static int update_fastdiscard_issues(struct f2fs_sb_info *sbi,
-						struct discard_policy *dpolicy)
-{
-	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
-	unsigned int limit_max_request = 0;
-
-	if (f2fs_support_fastdiscard(sbi)) {
-		if (dpolicy->type == DPOLICY_BG && dcc->small_discard_enable)
-			limit_max_request = dcc->discard_issue_bg;
-		else if (dpolicy->type == DPOLICY_UMOUNT)
-			limit_max_request = dcc->discard_issue_umount;
-		else
-			limit_max_request = dpolicy->max_requests;
-	} else {
-		limit_max_request = dpolicy->max_requests;
-	}
-
-	return limit_max_request;
-}
-#endif
 
 static void __update_discard_tree_range(struct f2fs_sb_info *sbi,
 				struct block_device *bdev, block_t lstart,
@@ -1271,11 +1189,6 @@ static int __submit_discard_cmd(struct f2fs_sb_info *sbi,
 
 	if (is_sbi_flag_set(sbi, SBI_NEED_FSCK))
 		return 0;
-
-#ifdef CONFIG_F2FS_FASTDISCARD
-	if (dc->state == D_PREP)
-		dc->bio_time = ktime_get_ns();
-#endif
 
 	trace_f2fs_issue_discard(bdev, dc->start, dc->len);
 
@@ -1614,42 +1527,9 @@ static int __issue_discard_cmd(struct f2fs_sb_info *sbi,
 	struct blk_plug plug;
 	int i, issued;
 	bool io_interrupted = false;
-#ifdef CONFIG_F2FS_FASTDISCARD
-	bool fastdiscard_enable = false;
-#endif
 
 	if (dpolicy->timeout)
 		f2fs_update_time(sbi, UMOUNT_DISCARD_TIMEOUT);
-
-#ifdef CONFIG_F2FS_FASTDISCARD
-	fastdiscard_enable = f2fs_support_fastdiscard(sbi);
-
-	if (fastdiscard_enable) {
-		for (i = MAX_PLIST_NUM - 1; i >= DEFAULT_DISCARD_GRANULARITY - 1; i--) {
-			pend_list = &dcc->pend_list[i];
-			if (!list_empty(pend_list)) {
-				//dcc->small_discard_enable = false;
-				goto retry;
-			}
-		}
-
-		if (dpolicy->type == DPOLICY_BG) {
-			if (!dcc->small_discard_enable
-				&& dcc->undiscard_blks > dcc->max_fastdiscards)
-				dcc->small_discard_enable = true;
-
-			if (dcc->undiscard_blks < dcc->min_fastdiscards)
-				dcc->small_discard_enable = false;
-
-			if (f2fs_odiscard_mode(dpolicy))
-				fastdiscard_enable = false;
-		}
-	} else {
-		dcc->small_discard_enable = false;
-	}
-
-	dpolicy->max_requests = update_fastdiscard_issues(sbi, dpolicy);
-#endif
 
 retry:
 	issued = 0;
@@ -1658,20 +1538,10 @@ retry:
 				f2fs_time_over(sbi, UMOUNT_DISCARD_TIMEOUT))
 			break;
 
-#ifdef CONFIG_F2FS_FASTDISCARD
-		if (dpolicy->type == DPOLICY_BG && fastdiscard_enable) {
-			if (i + 1 < dpolicy->granularity && !dcc->small_discard_enable)
-				break;
-		} else {
-			if (i + 1 < dpolicy->granularity)
-				break;
-		}
-#else
 		if (i + 1 < dpolicy->granularity)
 			break;
-#endif
 
-		if (i + 1 < DEFAULT_DISCARD_GRANULARITY && dpolicy->ordered)
+		if (i < DEFAULT_DISCARD_GRANULARITY && dpolicy->ordered)
 			return __issue_discard_cmd_orderly(sbi, dpolicy);
 
 		pend_list = &dcc->pend_list[i];
@@ -1888,9 +1758,6 @@ static int issue_discard_thread(void *data)
 	wait_queue_head_t *q = &dcc->discard_wait_queue;
 	struct discard_policy dpolicy;
 	unsigned int wait_ms = DEF_MIN_DISCARD_ISSUE_TIME;
-#ifdef CONFIG_F2FS_FASTDISCARD
-	unsigned int discard_wait_ms = 0;
-#endif
 	int issued;
 
 	set_freezable();
@@ -1910,14 +1777,7 @@ static int issue_discard_thread(void *data)
 				kthread_should_stop() || freezing(current) ||
 				dcc->discard_wake,
 				msecs_to_jiffies(wait_ms));
-#ifdef CONFIG_F2FS_FASTDISCARD
-		discard_wait_ms += wait_ms;
-		if (discard_wait_ms >= DEF_DISCARD_ISSUE_TIME) {
-			dcc->period_discard_blks += dcc->total_discard_blks;
-			dcc->cycle_count++;
-			discard_wait_ms = 0;
-		}
-#endif
+
 		if (dcc->discard_wake)
 			dcc->discard_wake = 0;
 
@@ -2265,36 +2125,11 @@ static int create_discard_cmd_control(struct f2fs_sb_info *sbi)
 	atomic_set(&dcc->discard_cmd_cnt, 0);
 	dcc->nr_discards = 0;
 	dcc->max_discards = MAIN_SEGS(sbi) << sbi->log_blocks_per_seg;
-#ifdef CONFIG_F2FS_FASTDISCARD
-	dcc->max_fastdiscards = DEF_FASTDISCARD_MAX_BLOCKS;
-	dcc->min_fastdiscards = DEF_FASTDISCARD_MIN_BLOCKS;
-#endif
 	dcc->undiscard_blks = 0;
 	dcc->next_pos = 0;
 	dcc->root = RB_ROOT_CACHED;
 	dcc->rbtree_check = false;
-#ifdef CONFIG_F2FS_DEBUG_FASTDISCARD
-	dcc->io_aware = true;
-	dcc->sys_discard_granularity = 0;
-#endif
-#ifdef CONFIG_F2FS_FASTDISCARD
-	dcc->small_discard_enable = false;
-	dcc->fastdiscard_enable = true;
-	dcc->screen_on = true;
-	dcc->discard_issue_bg = DEF_DISCARDS_ISSUE_DPOLICY_BG;
-	dcc->discard_issue_umount = DEF_DISCARDS_ISSUE_DPOLICY_UMOUNT;
-	dcc->total_discard_blks = 0;
-	dcc->screen_on_discard_blks = 0;
-	dcc->period_discard_blks= 0;
-	dcc->cycle_count = 0;
-	atomic_set(&dcc->discard_fail_nums, 0);
-	dcc->discard_num = 0;
-	dcc->discard_maxtime_us = 0;
-	dcc->discard_sumtime_us = 0;
-	dcc->discard_avgtime_us = 0;
-	dcc->discard_avg_blks= 0;
-	spin_lock_init(&dcc->lock);
-#endif
+
 	init_waitqueue_head(&dcc->discard_wait_queue);
 	SM_I(sbi)->dcc_info = dcc;
 init_thread:
@@ -2492,7 +2327,8 @@ void f2fs_invalidate_blocks(struct f2fs_sb_info *sbi, block_t addr)
 	if (addr == NEW_ADDR || addr == COMPRESS_ADDR)
 		return;
 
-	f2fs_invalidate_internal_cache(sbi, addr);
+	invalidate_mapping_pages(META_MAPPING(sbi), addr, addr);
+	f2fs_invalidate_compress_page(sbi, addr);
 
 	/* add it into sit main buffer */
 	down_write(&sit_i->sentry_lock);
@@ -2960,10 +2796,6 @@ void f2fs_save_inmem_curseg(struct f2fs_sb_info *sbi)
 
 	if (sbi->am.atgc_enabled)
 		__f2fs_save_inmem_curseg(sbi, CURSEG_ALL_DATA_ATGC);
-
-#ifdef CONFIG_DEVICE_XCOPY
-	__f2fs_save_inmem_curseg(sbi, CURSEG_COLD_DATA_COPY);
-#endif
 }
 
 static void __f2fs_restore_inmem_curseg(struct f2fs_sb_info *sbi, int type)
@@ -2989,10 +2821,6 @@ void f2fs_restore_inmem_curseg(struct f2fs_sb_info *sbi)
 
 	if (sbi->am.atgc_enabled)
 		__f2fs_restore_inmem_curseg(sbi, CURSEG_ALL_DATA_ATGC);
-
-#ifdef CONFIG_DEVICE_XCOPY
-	__f2fs_restore_inmem_curseg(sbi, CURSEG_COLD_DATA_COPY);
-#endif
 }
 
 static int get_ssr_segment(struct f2fs_sb_info *sbi, int type,
@@ -3194,9 +3022,7 @@ static unsigned int __issue_discard_cmd_range(struct f2fs_sb_info *sbi,
 	struct blk_plug plug;
 	int issued;
 	unsigned int trimmed = 0;
-#ifdef CONFIG_F2FS_FASTDISCARD
-	dpolicy->max_requests = update_fastdiscard_issues(sbi, dpolicy);
-#endif
+
 next:
 	issued = 0;
 
@@ -3466,28 +3292,10 @@ static int __get_segment_type_4(struct f2fs_io_info *fio)
 	}
 }
 
-static int __get_age_segment_type(struct inode *inode, pgoff_t pgofs)
-{
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	struct extent_info ei = {};
-
-	if (f2fs_lookup_age_extent_cache(inode, pgofs, &ei)) {
-		if (!ei.age)
-			return NO_CHECK_TYPE;
-		if (ei.age <= sbi->hot_data_age_threshold)
-			return CURSEG_HOT_DATA;
-		if (ei.age <= sbi->warm_data_age_threshold)
-			return CURSEG_WARM_DATA;
-		return CURSEG_COLD_DATA;
-	}
-	return NO_CHECK_TYPE;
-}
-
 static int __get_segment_type_6(struct f2fs_io_info *fio)
 {
 	if (fio->type == DATA) {
 		struct inode *inode = fio->page->mapping->host;
-		int type;
 
 		if (is_inode_flag_set(inode, FI_ALIGNED_WRITE))
 			return CURSEG_COLD_DATA_PINNED;
@@ -3502,11 +3310,6 @@ static int __get_segment_type_6(struct f2fs_io_info *fio)
 		}
 		if (file_is_cold(inode) || f2fs_need_compress_data(inode))
 			return CURSEG_COLD_DATA;
-
-		type = __get_age_segment_type(inode, fio->page->index);
-		if (type != NO_CHECK_TYPE)
-			return type;
-
 		if (file_is_hot(inode) ||
 				is_inode_flag_set(inode, FI_HOT_DATA) ||
 				f2fs_is_atomic_file(inode) ||
@@ -3618,9 +3421,6 @@ void f2fs_allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
 	locate_dirty_segment(sbi, GET_SEGNO(sbi, old_blkaddr));
 	locate_dirty_segment(sbi, GET_SEGNO(sbi, *new_blkaddr));
 
-	if (IS_DATASEG(type))
-		atomic64_inc(&sbi->allocated_data_blocks);
-
 	up_write(&sit_i->sentry_lock);
 
 	if (page && IS_NODESEG(type)) {
@@ -3679,8 +3479,11 @@ static void do_write_page(struct f2fs_summary *sum, struct f2fs_io_info *fio)
 reallocate:
 	f2fs_allocate_data_block(fio->sbi, fio->page, fio->old_blkaddr,
 			&fio->new_blkaddr, sum, type, fio);
-	if (GET_SEGNO(fio->sbi, fio->old_blkaddr) != NULL_SEGNO)
-		f2fs_invalidate_internal_cache(fio->sbi, fio->old_blkaddr);
+	if (GET_SEGNO(fio->sbi, fio->old_blkaddr) != NULL_SEGNO) {
+		invalidate_mapping_pages(META_MAPPING(fio->sbi),
+					fio->old_blkaddr, fio->old_blkaddr);
+		f2fs_invalidate_compress_page(fio->sbi, fio->old_blkaddr);
+	}
 
 	/* writeout dirty page into bdev */
 	f2fs_submit_page_write(fio);
@@ -3739,8 +3542,6 @@ void f2fs_outplace_write_data(struct dnode_of_data *dn,
 	struct f2fs_summary sum;
 
 	f2fs_bug_on(sbi, dn->data_blkaddr == NULL_ADDR);
-	if (fio->io_type == FS_DATA_IO || fio->io_type == FS_CP_DATA_IO)
-		f2fs_update_age_extent_cache(dn);
 	set_summary(&sum, dn->nid, dn->ofs_in_node, fio->version);
 	do_write_page(&sum, fio);
 	f2fs_update_data_blkaddr(dn, fio->new_blkaddr);
@@ -3774,7 +3575,8 @@ int f2fs_inplace_write_data(struct f2fs_io_info *fio)
 	}
 
 	if (fio->post_read)
-		f2fs_truncate_meta_inode_pages(sbi, fio->new_blkaddr, 1);
+		invalidate_mapping_pages(META_MAPPING(sbi),
+				fio->new_blkaddr, fio->new_blkaddr);
 
 	stat_inc_inplace_blocks(fio->sbi);
 
@@ -3873,7 +3675,9 @@ void f2fs_do_replace_block(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 		update_sit_entry(sbi, new_blkaddr, 1);
 	}
 	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO) {
-		f2fs_invalidate_internal_cache(sbi, old_blkaddr);
+		invalidate_mapping_pages(META_MAPPING(sbi),
+					old_blkaddr, old_blkaddr);
+		f2fs_invalidate_compress_page(sbi, old_blkaddr);
 		if (!from_gc)
 			update_segment_mtime(sbi, old_blkaddr, 0);
 		update_sit_entry(sbi, old_blkaddr, -1);
@@ -3962,7 +3766,7 @@ void f2fs_wait_on_block_writeback_range(struct inode *inode, block_t blkaddr,
 	for (i = 0; i < len; i++)
 		f2fs_wait_on_block_writeback(inode, blkaddr + i);
 
-	f2fs_truncate_meta_inode_pages(sbi, blkaddr, len);
+	invalidate_mapping_pages(META_MAPPING(sbi), blkaddr, blkaddr + len - 1);
 }
 
 static int read_compacted_summaries(struct f2fs_sb_info *sbi)
@@ -4655,10 +4459,6 @@ static int build_curseg(struct f2fs_sb_info *sbi)
 			array[i].seg_type = CURSEG_COLD_DATA;
 		else if (i == CURSEG_ALL_DATA_ATGC)
 			array[i].seg_type = CURSEG_COLD_DATA;
-#ifdef CONFIG_DEVICE_XCOPY
-		else if (i == CURSEG_COLD_DATA_COPY)
-			array[i].seg_type = CURSEG_COLD_DATA;
-#endif
 		array[i].segno = NULL_SEGNO;
 		array[i].next_blkoff = 0;
 		array[i].inited = false;
@@ -4879,13 +4679,6 @@ static int init_victim_secmap(struct f2fs_sb_info *sbi)
 	dirty_i->victim_secmap = f2fs_kvzalloc(sbi, bitmap_size, GFP_KERNEL);
 	if (!dirty_i->victim_secmap)
 		return -ENOMEM;
-
-	dirty_i->pinned_secmap = f2fs_kvzalloc(sbi, bitmap_size, GFP_KERNEL);
-	if (!dirty_i->pinned_secmap)
-		return -ENOMEM;
-
-	dirty_i->pinned_secmap_cnt = 0;
-	dirty_i->enable_pin_section = true;
 	return 0;
 }
 
@@ -5220,6 +5013,54 @@ int f2fs_check_write_pointer(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+static bool is_conv_zone(struct f2fs_sb_info *sbi, unsigned int zone_idx,
+						unsigned int dev_idx)
+{
+	if (!bdev_is_zoned(FDEV(dev_idx).bdev))
+		return true;
+	return !test_bit(zone_idx, FDEV(dev_idx).blkz_seq);
+}
+
+/* Return the zone index in the given device */
+static unsigned int get_zone_idx(struct f2fs_sb_info *sbi, unsigned int secno,
+					int dev_idx)
+{
+	block_t sec_start_blkaddr = START_BLOCK(sbi, GET_SEG_FROM_SEC(sbi, secno));
+
+	return (sec_start_blkaddr - FDEV(dev_idx).start_blk) >>
+						sbi->log_blocks_per_blkz;
+}
+
+/*
+ * Return the usable segments in a section based on the zone's
+ * corresponding zone capacity. Zone is equal to a section.
+ */
+static inline unsigned int f2fs_usable_zone_segs_in_sec(
+		struct f2fs_sb_info *sbi, unsigned int segno)
+{
+	unsigned int dev_idx, zone_idx, unusable_segs_in_sec;
+
+	dev_idx = f2fs_target_device_index(sbi, START_BLOCK(sbi, segno));
+	zone_idx = get_zone_idx(sbi, GET_SEC_FROM_SEG(sbi, segno), dev_idx);
+
+	/* Conventional zone's capacity is always equal to zone size */
+	if (is_conv_zone(sbi, zone_idx, dev_idx))
+		return sbi->segs_per_sec;
+
+	/*
+	 * If the zone_capacity_blocks array is NULL, then zone capacity
+	 * is equal to the zone size for all zones
+	 */
+	if (!FDEV(dev_idx).zone_capacity_blocks)
+		return sbi->segs_per_sec;
+
+	/* Get the segment count beyond zone capacity block */
+	unusable_segs_in_sec = (sbi->blocks_per_blkz -
+				FDEV(dev_idx).zone_capacity_blocks[zone_idx]) >>
+				sbi->log_blocks_per_seg;
+	return sbi->segs_per_sec - unusable_segs_in_sec;
+}
+
 /*
  * Return the number of usable blocks in a segment. The number of blocks
  * returned is always equal to the number of blocks in a segment for
@@ -5232,15 +5073,26 @@ static inline unsigned int f2fs_usable_zone_blks_in_seg(
 			struct f2fs_sb_info *sbi, unsigned int segno)
 {
 	block_t seg_start, sec_start_blkaddr, sec_cap_blkaddr;
-	unsigned int secno;
-
-	if (!sbi->unusable_blocks_per_sec)
-		return sbi->blocks_per_seg;
+	unsigned int zone_idx, dev_idx, secno;
 
 	secno = GET_SEC_FROM_SEG(sbi, segno);
 	seg_start = START_BLOCK(sbi, segno);
+	dev_idx = f2fs_target_device_index(sbi, seg_start);
+	zone_idx = get_zone_idx(sbi, secno, dev_idx);
+
+	/*
+	 * Conventional zone's capacity is always equal to zone size,
+	 * so, blocks per segment is unchanged.
+	 */
+	if (is_conv_zone(sbi, zone_idx, dev_idx))
+		return sbi->blocks_per_seg;
+
+	if (!FDEV(dev_idx).zone_capacity_blocks)
+		return sbi->blocks_per_seg;
+
 	sec_start_blkaddr = START_BLOCK(sbi, GET_SEG_FROM_SEC(sbi, secno));
-	sec_cap_blkaddr = sec_start_blkaddr + CAP_BLKS_PER_SEC(sbi);
+	sec_cap_blkaddr = sec_start_blkaddr +
+				FDEV(dev_idx).zone_capacity_blocks[zone_idx];
 
 	/*
 	 * If segment starts before zone capacity and spans beyond
@@ -5272,6 +5124,11 @@ static inline unsigned int f2fs_usable_zone_blks_in_seg(struct f2fs_sb_info *sbi
 	return 0;
 }
 
+static inline unsigned int f2fs_usable_zone_segs_in_sec(struct f2fs_sb_info *sbi,
+							unsigned int segno)
+{
+	return 0;
+}
 #endif
 unsigned int f2fs_usable_blks_in_seg(struct f2fs_sb_info *sbi,
 					unsigned int segno)
@@ -5286,7 +5143,7 @@ unsigned int f2fs_usable_segs_in_sec(struct f2fs_sb_info *sbi,
 					unsigned int segno)
 {
 	if (f2fs_sb_has_blkzoned(sbi))
-		return CAP_SEGS_PER_SEC(sbi);
+		return f2fs_usable_zone_segs_in_sec(sbi, segno);
 
 	return sbi->segs_per_sec;
 }
@@ -5410,7 +5267,6 @@ static void destroy_victim_secmap(struct f2fs_sb_info *sbi)
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 
-	kvfree(dirty_i->pinned_secmap);
 	kvfree(dirty_i->victim_secmap);
 }
 
@@ -5525,16 +5381,8 @@ int __init f2fs_create_segment_manager_caches(void)
 			sizeof(struct inmem_pages));
 	if (!inmem_entry_slab)
 		goto destroy_sit_entry_set;
-#ifdef CONFIG_F2FS_FS_DEDUP
-	if (create_page_info_slab())
-		goto destroy_inmem_page_entry;
-#endif
 	return 0;
 
-#ifdef CONFIG_F2FS_FS_DEDUP
-destroy_inmem_page_entry:
-	kmem_cache_destroy(inmem_entry_slab);
-#endif
 destroy_sit_entry_set:
 	kmem_cache_destroy(sit_entry_set_slab);
 destroy_discard_cmd:
@@ -5551,7 +5399,4 @@ void f2fs_destroy_segment_manager_caches(void)
 	kmem_cache_destroy(discard_cmd_slab);
 	kmem_cache_destroy(discard_entry_slab);
 	kmem_cache_destroy(inmem_entry_slab);
-#ifdef CONFIG_F2FS_FS_DEDUP
-	destroy_page_info_slab();
-#endif
 }

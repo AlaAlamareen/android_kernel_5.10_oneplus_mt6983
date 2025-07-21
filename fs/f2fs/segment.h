@@ -36,38 +36,6 @@ static inline void sanity_check_seg_type(struct f2fs_sb_info *sbi,
 #define IS_WARM(t)	((t) == CURSEG_WARM_NODE || (t) == CURSEG_WARM_DATA)
 #define IS_COLD(t)	((t) == CURSEG_COLD_NODE || (t) == CURSEG_COLD_DATA)
 
-#ifdef CONFIG_DEVICE_XCOPY
-#define IS_CURSEG(sbi, seg)						\
-	(((seg) == CURSEG_I(sbi, CURSEG_HOT_DATA)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_WARM_DATA)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_COLD_DATA)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_HOT_NODE)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_WARM_NODE)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_COLD_NODE)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_COLD_DATA_PINNED)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_ALL_DATA_ATGC)->segno) ||	\
-	 ((seg) == CURSEG_I(sbi, CURSEG_COLD_DATA_COPY)->segno))
-
-#define IS_CURSEC(sbi, secno)						\
-	(((secno) == CURSEG_I(sbi, CURSEG_HOT_DATA)->segno /		\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_WARM_DATA)->segno /		\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_COLD_DATA)->segno /		\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_HOT_NODE)->segno /		\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_WARM_NODE)->segno /		\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_COLD_NODE)->segno /		\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_COLD_DATA_PINNED)->segno /	\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_ALL_DATA_ATGC)->segno /	\
-	  (sbi)->segs_per_sec) ||	\
-	 ((secno) == CURSEG_I(sbi, CURSEG_COLD_DATA_COPY)->segno /	\
-	  (sbi)->segs_per_sec))
-#else
 #define IS_CURSEG(sbi, seg)						\
 	(((seg) == CURSEG_I(sbi, CURSEG_HOT_DATA)->segno) ||	\
 	 ((seg) == CURSEG_I(sbi, CURSEG_WARM_DATA)->segno) ||	\
@@ -95,7 +63,6 @@ static inline void sanity_check_seg_type(struct f2fs_sb_info *sbi,
 	  (sbi)->segs_per_sec) ||	\
 	 ((secno) == CURSEG_I(sbi, CURSEG_ALL_DATA_ATGC)->segno /	\
 	  (sbi)->segs_per_sec))
-#endif
 
 #define MAIN_BLKADDR(sbi)						\
 	(SM_I(sbi) ? SM_I(sbi)->main_blkaddr : 				\
@@ -134,12 +101,6 @@ static inline void sanity_check_seg_type(struct f2fs_sb_info *sbi,
 		GET_SEGNO_FROM_SEG0(sbi, blk_addr)))
 #define BLKS_PER_SEC(sbi)					\
 	((sbi)->segs_per_sec * (sbi)->blocks_per_seg)
-#define CAP_BLKS_PER_SEC(sbi)					\
-	((sbi)->segs_per_sec * (sbi)->blocks_per_seg -		\
-	 (sbi)->unusable_blocks_per_sec)
-#define CAP_SEGS_PER_SEC(sbi)					\
-	((sbi)->segs_per_sec - ((sbi)->unusable_blocks_per_sec >>\
-	(sbi)->log_blocks_per_seg))
 #define GET_SEC_FROM_SEG(sbi, segno)				\
 	(((segno) == -1) ? -1: (segno) / (sbi)->segs_per_sec)
 #define GET_SEG_FROM_SEC(sbi, secno)				\
@@ -334,9 +295,6 @@ struct dirty_seglist_info {
 	struct mutex seglist_lock;		/* lock for segment bitmaps */
 	int nr_dirty[NR_DIRTY_TYPE];		/* # of dirty segments */
 	unsigned long *victim_secmap;		/* background GC victims */
-	unsigned long *pinned_secmap;		/* pinned victims from foreground GC */
-	unsigned int pinned_secmap_cnt;		/* count of victims which has pinned data */
-	bool enable_pin_section;		/* enable pinning section */
 };
 
 /* victim selection function for cleaning and SSR */

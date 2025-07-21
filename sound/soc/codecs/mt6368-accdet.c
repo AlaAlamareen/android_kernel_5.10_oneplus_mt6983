@@ -1674,18 +1674,9 @@ static void dis_micbias_work_callback(struct work_struct *work)
 	 * if <20k + 4pole, disable accdet will disable accdet
 	 * plug out interrupt. The behavior will same as 3pole
 	 */
-#ifdef OPLUS_ARCH_EXTENDS
-/* add for fix headset hook key up event lose issues */
-	if (accdet->cable_type == HEADSET_MIC) {
-		/* do nothing */
-	} else if ((accdet->cable_type == HEADSET_NO_MIC) ||
-		(cur_AB == ACCDET_STATE_AB_00) ||
-		(cur_AB == ACCDET_STATE_AB_11)) {
-#else // OPLUS_ARCH_EXTENDS
 	if ((accdet->cable_type == HEADSET_NO_MIC) ||
 		(cur_AB == ACCDET_STATE_AB_00) ||
 		(cur_AB == ACCDET_STATE_AB_11)) {
-#endif // OPLUS_ARCH_EXTENDS
 		/* disable accdet_sw_en=0
 		 * disable accdet_hwmode_en=0
 		 */

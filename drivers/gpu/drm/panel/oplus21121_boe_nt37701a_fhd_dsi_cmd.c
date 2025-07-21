@@ -770,7 +770,6 @@ static struct mtk_panel_params ext_params = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 60,
         },
-        .panel_bpp = 10,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -893,7 +892,6 @@ static struct mtk_panel_params ext_params_90hz = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 90,
         },
-        .panel_bpp = 10,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -1018,7 +1016,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	.dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 120,
         },
-        .panel_bpp = 10,
 };
 
 static int panel_ata_check(struct drm_panel *panel)
@@ -1529,10 +1526,7 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-	if (!m) {
-		pr_err("invalid drm_display_mode\n");
-		return 1;
-	}
+
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
 	else if (drm_mode_vrefresh(m) == 90)
@@ -1596,10 +1590,6 @@ static int mode_switch(struct drm_panel *panel,
 {
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
-	if (!m) {
-		pr_err("invalid drm_display_mode\n");
-		return 1;
-	}
 
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
 

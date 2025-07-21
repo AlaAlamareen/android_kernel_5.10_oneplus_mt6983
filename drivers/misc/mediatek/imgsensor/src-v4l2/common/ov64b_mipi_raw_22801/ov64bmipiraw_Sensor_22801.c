@@ -1311,7 +1311,7 @@ static void custom10_setting(struct subdrv_ctx *ctx)
 		LOG_INF("%s _is_seamless %d, _size_to_write %d\n",
 			__func__, _is_seamless, _size_to_write);
 
-		if (_size_to_write + _length > _I2C_BUF_SIZE - 2) {
+		if (_size_to_write + _length > _I2C_BUF_SIZE) {
 			LOG_INF("_too much i2c data for fast siwtch %d\n",
 				_size_to_write + _length);
 			return;

@@ -34,7 +34,6 @@ extern int oplus_display_set_brightness(void *buf);
 extern int oplus_display_get_brightness(void *buf);
 extern int oplus_display_panel_set_cabc(void *buf);
 extern int oplus_display_panel_get_cabc(void *buf);
-extern int oplus_display_panel_get_panel_bpp(void *buf);
 extern int oplus_display_panel_set_esd(void *buf);
 extern int oplus_display_panel_get_esd(void *buf);
 extern int oplus_display_set_mtk_loglevel(void *buf);
@@ -50,10 +49,7 @@ extern int oplus_display_panel_set_pq_trigger(void *buf);
 extern int oplus_display_panel_set_pwm_status(void *buf);
 extern int oplus_display_panel_get_pwm_status(void *buf);
 extern int oplus_display_panel_get_pwm_status_for_90hz(void *buf);
-extern int oplus_display_panel_get_panel_type(void *buf);
-extern int oplus_display_panel_set_hbm_max(void *data);
-extern int oplus_display_panel_get_hbm_max(void *data);
-extern int oplus_display_panel_get_max_dbv(void *data);
+
 
 static const struct panel_ioctl_desc panel_ioctls[] = {
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_POWER, oplus_display_panel_set_pwr),
@@ -105,14 +101,10 @@ static const struct panel_ioctl_desc panel_ioctls[] = {
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_FP_PRESS, oplus_ofp_notify_fp_press),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_MTK_LOG_LEVEL, oplus_display_set_mtk_loglevel),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_FPS_LIMIT, oplus_display_set_limit_fps),
-	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_LCD_MAX_BRIGHTNESS, oplus_display_panel_get_max_dbv),
-	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_FAKE_AOD, oplus_ofp_set_fake_aod),
-	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_FAKE_AOD, oplus_ofp_get_fake_aod),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_SOFTIRIS_COLOR, oplus_display_get_softiris_color_status),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_DP_SUPPORT, oplus_display_get_dp_support),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_DRE_STATUS, oplus_display_panel_set_cabc),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_DRE_STATUS, oplus_display_panel_get_cabc),
-	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PANEL_BPP, oplus_display_panel_get_panel_bpp),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_PQ_TRIGGER, oplus_display_panel_set_pq_trigger),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PQ_TRIGGER, oplus_display_panel_get_pq_trigger),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_FP_TYPE, oplus_ofp_set_fp_type),
@@ -120,9 +112,6 @@ static const struct panel_ioctl_desc panel_ioctls[] = {
 	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_PWM_STATUS, oplus_display_panel_set_pwm_status),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PWM_STATUS, oplus_display_panel_get_pwm_status),
 	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PWM_STATUS_FOR_90HZ, oplus_display_panel_get_pwm_status_for_90hz),
-	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_PANEL_TYPE, oplus_display_panel_get_panel_type),
-	PANEL_IOCTL_DEF(PANEL_IOCTL_SET_HBM_MAX, oplus_display_panel_set_hbm_max),
-  	PANEL_IOCTL_DEF(PANEL_IOCTL_GET_HBM_MAX, oplus_display_panel_get_hbm_max),
 };
 
 static int panel_open(struct inode *inode, struct file *filp)
@@ -168,11 +157,6 @@ long panel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 
 	ioctl = &panel_ioctls[nr];
-	if (!ioctl) {
-		pr_err("%s invalid ioctl\n", __func__);
-		return retcode;
-	}
-
 	func = ioctl->func;
 	if (unlikely(!func)) {
 		pr_err("%s no function\n", __func__);
@@ -180,9 +164,7 @@ long panel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return retcode;
 	}
 
-	drv_size = PANEL_IOCTL_SIZE(cmd);
-	out_size = drv_size;
-	in_size = drv_size;
+	in_size = out_size = drv_size = PANEL_IOCTL_SIZE(cmd);
 	if ((cmd & ioctl->cmd & IOC_IN) == 0) {
 		in_size = 0;
 	}
@@ -219,6 +201,9 @@ long panel_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 
 err_panel:
+	if (!ioctl) {
+		pr_err("%s invalid ioctl\n", __func__);
+	}
 	if (kdata != static_data) {
 		kfree(kdata);
 	}
@@ -303,4 +288,4 @@ void oplus_display_panel_exit(void)
 //module_init(oplus_display_panel_init);
 //module_exit(oplus_display_panel_exit);
 //MODULE_LICENSE("GPL v2");
-//MODULE_AUTHOR("Lisheng <lisheng1@oplus.com>");
+//MODULE_AUTHOR("Lisheng");

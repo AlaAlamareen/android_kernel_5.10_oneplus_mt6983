@@ -344,18 +344,16 @@ int kvm_set_ipa_limit(void)
 	}
 
 	switch (cpuid_feature_extract_unsigned_field(mmfr0, tgran_2)) {
-	case ID_AA64MMFR0_TGRAN_2_SUPPORTED_NONE:
+	default:
+	case 1:
 		kvm_err("PAGE_SIZE not supported at Stage-2, giving up\n");
 		return -EINVAL;
-	case ID_AA64MMFR0_TGRAN_2_SUPPORTED_DEFAULT:
+	case 0:
 		kvm_debug("PAGE_SIZE supported at Stage-2 (default)\n");
 		break;
-	case ID_AA64MMFR0_TGRAN_2_SUPPORTED_MIN ... ID_AA64MMFR0_TGRAN_2_SUPPORTED_MAX:
+	case 2:
 		kvm_debug("PAGE_SIZE supported at Stage-2 (advertised)\n");
 		break;
-	default:
-		kvm_err("Unsupported value for TGRAN_2, giving up\n");
-		return -EINVAL;
 	}
 
 	kvm_ipa_limit = id_aa64mmfr0_parange_to_phys_shift(parange);

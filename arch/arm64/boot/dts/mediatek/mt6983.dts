@@ -446,7 +446,6 @@
 	//#endif /* OPLUS_FEATURE_CAMERA_COMMON */
 
     //#ifdef OPLUS_FEATURE_FINGERPRINT
-    /* wangzhi12@oplus.com, BSP.Biometrics.Fingerprint, 2021-07-29, for fingerprint */
     oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
     };
 
@@ -1688,7 +1687,7 @@
 			gpr_offset = <0x1FD1C>;
 			gpr_id = <6>;
 			gmpu_table_size = <0x0>;
-			protected_reserve_size = <0x800000>;
+			protected_reserve_size = <0x400000>;
 		};
 
 		mali: mali@13000000 {
@@ -10384,8 +10383,7 @@
 			      < 9 0x1000   0x0>, /* sensor list */
 			      <10 0x2000   0x0>, /* sensor debug */
 			      <11 0x100    0x0>, /* sensor custom writer */
-			      <12 0x100    0x0>, /* sensor custom reader */
-			      <13 0x11000  0x0>; /* sensor debug kit 13 */
+			      <12 0x100    0x0>; /* sensor custom reader */
 
 		memorydump = <0x200000>, /* l2tcm */
 			     <0x03c000>, /* l1c */
@@ -14492,7 +14490,11 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 			tcpc,role_def = <1>;
 /*#endif*/
 			/* 0: Default, 1: 1.5, 2: 3.0 */
-			tcpc,rp_level = <0>;
+/*#ifndef OPLUS_FEATURE_CHG_BASIC*/
+			/*tcpc,rp_level = <0>;*/
+/*#else*/
+			tcpc,rp_level = <1>;
+/*#endif*/
 			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
 			tcpc,vconn_supply  = <1>;
 			/* the number of notifier supply */

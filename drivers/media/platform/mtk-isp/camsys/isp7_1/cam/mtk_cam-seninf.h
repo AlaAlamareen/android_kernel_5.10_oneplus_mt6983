@@ -215,11 +215,6 @@ struct seninf_ctx {
 	unsigned int size_err_flag;
 	unsigned int dbg_timeout;
 	unsigned int dbg_last_dump_req;
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	unsigned int esd;
-#endif
-
-	int fsync_vsync_src_pad; // e.g., raw, 3A-meta(general-embedded)
 };
 
 #endif

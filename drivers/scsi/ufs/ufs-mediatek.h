@@ -163,6 +163,21 @@ enum unipro_dme_errCode {
 	UNIPRO_DME_ERR_MAX
 };
 
+enum unipro_err_time_stamp {
+	UNIPRO_0_STAMP,
+	UNIPRO_1_STAMP,
+	UNIPRO_2_STAMP,
+	UNIPRO_3_STAMP,
+	UNIPRO_4_STAMP,
+	UNIPRO_5_STAMP,
+	UNIPRO_6_STAMP,
+	UNIPRO_7_STAMP,
+	UNIPRO_8_STAMP,
+	UNIPRO_9_STAMP,
+	STAMP_RECORD_MAX
+};
+#define STAMP_MIN_INTERVAL ((ktime_t)600000000000) /*ns, 10min*/
+
 struct signal_quality {
 	u32 ufs_device_err_cnt;
 	u32 ufs_host_err_cnt;
@@ -179,7 +194,9 @@ struct signal_quality {
 	u32 unipro_TL_err_cnt[UNIPRO_TL_ERR_MAX];
 	u32 unipro_DME_err_total_cnt;
 	u32 unipro_DME_err_cnt[UNIPRO_DME_ERR_MAX];
-	u32 gear_err_cnt[UFS_HS_G4 + 1];
+	/* first 10 error cnt, interval is 10min at least */
+	ktime_t stamp[STAMP_RECORD_MAX];
+	int stamp_pos;
 };
 /*feature-flashaging806-v001-1-end*/
 
@@ -315,7 +332,6 @@ struct ufs_mtk_host {
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
 #endif
-	struct delayed_work iostack_work;
 };
 /*feature-flashaging806-v001-2-begin*/
 struct unipro_signal_quality_ctrl {
@@ -419,11 +435,9 @@ struct ufs_transmission_status_t
 
 	u64 active_count;
 	u64 active_time;
-	u64 resume_timing;
 
 	u64 sleep_count;
 	u64 sleep_time;
-	u64 suspend_timing;
 
 	u64 powerdown_count;
 	u64 powerdown_time;

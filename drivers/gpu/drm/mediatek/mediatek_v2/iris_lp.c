@@ -1701,7 +1701,7 @@ static ssize_t _iris_abyp_dbg_write(struct file *file,
 		_iris_video_abyp_enter();
 	} else if (val == 4) {
 		_iris_video_abyp_exit();
-	} else if (val >= 10 && val <= 18) {
+	} else if (val >= 10 && val <= 19) {
 		IRIS_LOGI("%s one wired %d", __func__, (int)(val - 10));
 		iris_send_one_wired_cmd((int)(val - 10));
 	} else if (val == 20) {

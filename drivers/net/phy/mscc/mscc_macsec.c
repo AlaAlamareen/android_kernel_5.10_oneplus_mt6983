@@ -632,7 +632,6 @@ static void vsc8584_macsec_free_flow(struct vsc8531_private *priv,
 
 	list_del(&flow->list);
 	clear_bit(flow->index, bitmap);
-	memzero_explicit(flow->key, sizeof(flow->key));
 	kfree(flow);
 }
 
@@ -880,9 +879,6 @@ static int vsc8584_macsec_upd_rxsa(struct macsec_context *ctx)
 {
 	struct macsec_flow *flow;
 
-	if (ctx->sa.update_pn)
-		return -EINVAL;
-
 	flow = vsc8584_macsec_find_flow(ctx, MACSEC_INGR);
 	if (IS_ERR(flow))
 		return PTR_ERR(flow);
@@ -931,9 +927,6 @@ static int vsc8584_macsec_add_txsa(struct macsec_context *ctx)
 static int vsc8584_macsec_upd_txsa(struct macsec_context *ctx)
 {
 	struct macsec_flow *flow;
-
-	if (ctx->sa.update_pn)
-		return -EINVAL;
 
 	flow = vsc8584_macsec_find_flow(ctx, MACSEC_EGR);
 	if (IS_ERR(flow))

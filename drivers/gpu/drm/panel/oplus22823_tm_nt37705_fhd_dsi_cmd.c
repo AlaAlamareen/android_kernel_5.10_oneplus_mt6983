@@ -39,9 +39,11 @@
 //#ifdef OPLUS_FEATURE_DISPLAY_ADFR
 #include "../oplus/oplus_adfr_ext.h"
 //#endif
+
 #ifdef OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION
 #include "../oplus/oplus_display_temp_compensation.h"
 #endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
+
 /* add for ofp */
 #include "../oplus/oplus_display_onscreenfingerprint.h"
 /* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
@@ -76,7 +78,6 @@ static unsigned int CurrentFrameRate = 0;
 #define DRM_PANEL_EVENT_PWM_TURBO  0x14
 DEFINE_MUTEX(oplus_pwm_lock);
 extern unsigned int hpwm_90nit_set_temp;
-extern int hbm_force_off_when_backlight_0;
 
 static struct regulator *vmc_ldo;
 static struct regulator *vrfio18_aif;
@@ -283,17 +284,13 @@ static int lcm_panel_vrfio18_aif_enable(struct device *dev)
 		//if(regulator_is_enabled(vrfio18_aif)) {
 		//	return 0;
 		//} else {
-			ret = regulator_enable(vrfio18_aif);
-			if (ret < 0) {
-				DISP_INFO("regulator_enable fail, ret = %d\n", ret);
-				retval |= ret;
-			}
+			regulator_enable(vrfio18_aif);
 		//}
 	}
 	volt = regulator_get_voltage(vrfio18_aif);
 	DISP_DEBUG("get lcm_panel_vrf18_enable,volt:%d\n",volt);
 
-    return retval;
+        return retval;
 }
 
 static int lcm_panel_vrfio18_aif_disable(struct device *dev)
@@ -358,11 +355,7 @@ static int lcm_panel_vmc_ldo_enable(struct device *dev)
 			//if(regulator_is_enabled(vmc_ldo)) {
 				//return 0;
 			//} else {
-				ret = regulator_enable(vmc_ldo);
-				if (ret < 0) {
-					DISP_INFO("regulator_enable fail, ret = %d\n", ret);
-					retval |= ret;
-				}
+				regulator_enable(vmc_ldo);
 			//}
 		}
 	volt = regulator_get_voltage(vmc_ldo);
@@ -917,7 +910,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.skip_unnecessary_switch = true,
 	.prete_offset = 233,
-	.panel_bpp = 10,
 	},
 	//fhd_sdc_60_mode
 	{
@@ -949,7 +941,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	.color_dual_brightness_status = true,
 	.color_oplus_calibrate_status = true,
 	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 624,
+	.cmd_null_pkt_len = 400,
 	.vendor = "22823_Tianma_NT37705",
 	.manufacture = "Tianma4095",
 	.lane_swap_en = 0,
@@ -1026,8 +1018,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
         },
 	.skip_unnecessary_switch = true,
 	.prete_offset = 466,
-	.first_prete_delay_time = 13500,
-	.panel_bpp = 10,
+	.first_prete_delay_time = 14000,
 	},
 	//fhd 90hz
 {
@@ -1137,7 +1128,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.skip_unnecessary_switch = true,
 	.prete_offset = 211,
-	.panel_bpp = 10,
 	},
 	//fhd_oa_120_mode
 	{
@@ -1245,7 +1235,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.skip_unnecessary_switch = true,
-	.panel_bpp = 10,
 	},
 };
 
@@ -1493,6 +1482,7 @@ static int lcm_set_hbm(void *dsi, dcs_write_gce cb,
 			cb(dsi, handle, hbm_off_cmd_60hz[i].para_list, hbm_off_cmd_60hz[i].count);
 		}
 		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+
 		if ((get_pwm_status(g_pwm_en)) && (oplus_display_brightness != 1)) {
 			pwm_power_on = true;
 			oplus_display_panel_set_frequency_pwm(dsi, cb, handle, oplus_display_brightness);
@@ -1586,17 +1576,15 @@ static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 	}
 
 	if (!en) {
-		if (hbm_force_off_when_backlight_0 == 1) {
-			pr_info("backlight set 0, force hbm off, but not set backlight\n");
-			return 0;
-		}
 		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
-		if (get_pwm_status(g_pwm_en)) {
+
+		if ((get_pwm_status(g_pwm_en)) && (oplus_display_brightness != 1)) {
 			pwm_power_on = true;
-			if (oplus_display_brightness != 1)
-				oplus_display_panel_set_frequency_pwm(dsi, cb, handle, oplus_display_brightness);
+			oplus_display_panel_set_frequency_pwm(dsi, cb, handle, oplus_display_brightness);
 		}
 	}
+
+	lcdinfo_notify(1, &en);
 
 	OFP_DEBUG("end\n");
 
@@ -2024,14 +2012,10 @@ static int oplus_temp_compensation_set(void *dsi, void *gce_cb, void *handle, un
 		return -EINVAL;
 	}
 
-	OPLUS_TEMP_COMPENSAITON_TRACE_BEGIN("oplus_temp_compensation_set");
-
 	rc = oplus_temp_compensation_cmd_set(dsi, gce_cb, handle, setting_mode);
 	if (rc) {
 		TEMP_COMPENSATION_ERR("failed to set temp compensation cmd, rc=%d\n", rc);
 	}
-
-	OPLUS_TEMP_COMPENSAITON_TRACE_END("oplus_temp_compensation_set");
 
 	TEMP_COMPENSATION_DEBUG("end\n");
 
@@ -2377,9 +2361,10 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	usleep_range(1000000, 1000100);
 
 #ifdef OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION
-	if (oplus_temp_compensation_init(dev)) {
-		TEMP_COMPENSATION_ERR("failed to init temp compensation\n");
-		return -ENODEV;
+	rc = oplus_temp_compensation_register_ntc_channel(dev);
+	if (rc) {
+		TEMP_COMPENSATION_ERR("failed to register ntc channel\n");
+		return rc;
 	}
 #endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
 
@@ -2540,6 +2525,6 @@ module_init(lcm_drv_init);
 module_exit(lcm_drv_exit);
 
 
-MODULE_AUTHOR("lianghao <lianghao1@oplus.com>");
+MODULE_AUTHOR("lianghao");
 MODULE_DESCRIPTION("oplus22823,tm,nt37705,OLED Driver");
 MODULE_LICENSE("GPL v2");

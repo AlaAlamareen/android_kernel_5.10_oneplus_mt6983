@@ -45,15 +45,59 @@
 #include "../mediatek/mediatek_v2/mtk_corner_pattern/data_hw_roundedpattern_l_boe.h"
 /* add for dips_drv log  */
 #include "../oplus/oplus_display_mtk_debug.h"
-#include "oplus22017_boe_nt37705_fhd_dsi_cmd.h"
 
+#define REGFLAG_CMD       0xFFFA
+#define REGFLAG_DELAY       0xFFFC
+#define REGFLAG_UDELAY  0xFFFB
+#define REGFLAG_END_OF_TABLE    0xFFFD
+
+#define BRIGHTNESS_MAX    4095
+#define BRIGHTNESS_HALF   2047
+#define MAX_NORMAL_BRIGHTNESS   3515
+#define LCM_BRIGHTNESS_TYPE 2
 static unsigned int esd_brightness = 1023;
 extern unsigned int oplus_display_brightness;
-extern unsigned int last_backlight;
 static bool aod_state = false;
 
 extern void lcdinfo_notify(unsigned long val, void *v);
 extern unsigned int oplus_enhance_mipi_strength;
+struct LCM_setting_table {
+  	unsigned int cmd;
+ 	unsigned char count;
+ 	unsigned char para_list[128];
+};
+
+static struct LCM_setting_table lcm_setbrightness_normal[] = {
+        {REGFLAG_CMD,3, {0x51, 0x00, 0x00}},
+};
+
+static struct LCM_setting_table lcm_finger_HBM_on_setting[] = {
+        {REGFLAG_CMD,3, {0x51, 0x0f, 0xff}},
+};
+
+static struct LCM_setting_table lcm_aod_to_normal[] = {
+	{REGFLAG_CMD,6,{0xF0,0x55,0xAA,0x52,0x08,0x00}},
+	{REGFLAG_CMD,2,{0x6F,0x0E}},
+	{REGFLAG_CMD,2,{0xB5,0x4F}},
+	{REGFLAG_CMD,2,{0x65,0x00}},
+	//{REGFLAG_DELAY,30,{}},
+	{REGFLAG_CMD,1,{0x38}},
+	{REGFLAG_CMD,1,{0x2C}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+static struct LCM_setting_table lcm_aod_high_mode[] = {
+	{REGFLAG_CMD, 2, {0x6F,0x04}},
+	{REGFLAG_CMD, 3, {0x51,0x07,0x5F}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+static struct LCM_setting_table lcm_aod_low_mode[] = {
+	//10nit
+	{REGFLAG_CMD, 2, {0x6F,0x04}},
+	{REGFLAG_CMD, 3, {0x51,0x00,0x03}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
 
 struct lcm_pmic_info {
 	struct regulator *reg_vufs18;
@@ -71,7 +115,6 @@ struct lcm {
 	struct gpio_desc *vddr_aod_enable_gpio;
 	struct gpio_desc *vci_enable_gpio;
 	struct gpio_desc *te_switch_gpio,*te_out_gpio;
-	struct drm_display_mode *m;
 	bool prepared;
 	bool enabled;
 	int error;
@@ -216,74 +259,55 @@ static int lcm_panel_vufs_ldo_disable(struct device *dev)
 	return ret;
 }
 #endif
-static void push_table(struct lcm *ctx, struct LCM_setting_table *table,
-		unsigned int count)
-{
-	unsigned int i;
-	unsigned int cmd;
-
-	for (i = 0; i < count; i++) {
-		cmd = table[i].cmd;
-		switch (cmd) {
-		case REGFLAG_DELAY:
-			usleep_range(table[i].count * 1000, table[i].count * 1000 + 100);
-			break;
-		case REGFLAG_UDELAY:
-			usleep_range(table[i].count, table[i].count + 1000);
-			break;
-		case REGFLAG_END_OF_TABLE:
-			break;
-		default:
-			lcm_dcs_write(ctx, table[i].para_list,
-				table[i].count);
-			break;
-		}
-	}
-}
-static int get_mode_enum(struct drm_display_mode *m)
-{
-	int ret = -1;
-	int m_vrefresh = 0;
-
-	if (m == NULL) {
-		return -EINVAL;
-	}
-
-	m_vrefresh = drm_mode_vrefresh(m);
-
-	if (m_vrefresh == 60) {
-		ret = FHD_SDC60;
-	} else if (m_vrefresh == 90) {
-		ret = FHD_SDC90;
-	} else if (m_vrefresh == 120) {
-		ret = FHD_SDC120;
-	}
-	return ret;
-}
-
 static void lcm_panel_init(struct lcm *ctx)
 {
-	int mode_id = -1;
-	struct drm_display_mode *m = ctx->m;
-
-	mode_id = get_mode_enum(m);
-	DISP_INFO("mode_id=%d\n", mode_id);
-	switch (mode_id) {
-	case FHD_SDC60:
-		push_table(ctx, dsi_on_cmd_sdc60, sizeof(dsi_on_cmd_sdc60)/sizeof(struct LCM_setting_table));
-		break;
-	case FHD_SDC90:
-		push_table(ctx, dsi_on_cmd_sdc90, sizeof(dsi_on_cmd_sdc90)/sizeof(struct LCM_setting_table));
-		break;
-	case FHD_SDC120:
-		push_table(ctx, dsi_on_cmd_sdc120, sizeof(dsi_on_cmd_sdc120)/sizeof(struct LCM_setting_table));
-		break;
-	default:
-		push_table(ctx, dsi_on_cmd_sdc120, sizeof(dsi_on_cmd_sdc120)/sizeof(struct LCM_setting_table));
-		break;
-	}
-
-	DISP_INFO("Successful\n");
+	DISP_INFO(" +\n");
+	lcm_dcs_write_seq_static(ctx,0xF0,0x55,0xAA,0x52,0x08,0x01);
+	lcm_dcs_write_seq_static(ctx,0xD1,0x07,0x02,0x0A,0x00,0x00,0x01,0x00,0x00,0x01,0x00,0x00,0x01,0x00,0x00,0x01,0x00,0x00,0x01); //hsync
+	lcm_dcs_write_seq_static(ctx,0xF0,0x55,0xAA,0x52,0x08,0x01);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x18);
+	lcm_dcs_write_seq_static(ctx,0xD8,0x18); //del ELVDD Peak
+	lcm_dcs_write_seq_static(ctx,0xF0,0x55,0xAA,0x52,0x08,0x01);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x03);
+	lcm_dcs_write_seq_static(ctx,0xC7,0x00);
+	lcm_dcs_write_seq_static(ctx,0xFF,0xAA,0x55,0xA5,0x80);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x1A);
+	lcm_dcs_write_seq_static(ctx,0xF4,0x55);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x15);
+	lcm_dcs_write_seq_static(ctx,0xF8,0x01,0x51);    /* OSC=101.6Mhz */
+	lcm_dcs_write_seq_static(ctx,0xFF,0xAA,0x55,0xA5,0x81);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x05);
+	lcm_dcs_write_seq_static(ctx,0xFE,0x3C);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x02);
+	lcm_dcs_write_seq_static(ctx,0xF9,0x04);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x0F);
+	lcm_dcs_write_seq_static(ctx,0xF5,0x20);
+	lcm_dcs_write_seq_static(ctx,0xFF,0xAA,0x55,0xA5,0x83);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x12);
+	lcm_dcs_write_seq_static(ctx,0xFE,0x41);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x13);
+	lcm_dcs_write_seq_static(ctx,0xFD,0x21); //Demura
+	lcm_dcs_write_seq_static(ctx,0xFF,0xAA,0x55,0xA5,0x00);
+	lcm_dcs_write_seq_static(ctx,0x35);
+	lcm_dcs_write_seq_static(ctx,0x53,0x20);
+	lcm_dcs_write_seq_static(ctx,0x2A,0x00,0x00,0x04,0x37);
+	lcm_dcs_write_seq_static(ctx,0x2B,0x00,0x00,0x09,0x6B);
+	lcm_dcs_write_seq_static(ctx,0x26,0x00);
+	lcm_dcs_write_seq_static(ctx,0x51,0x0D,0xBB);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x04);
+	lcm_dcs_write_seq_static(ctx,0x51,0x0D,0xBB);
+	lcm_dcs_write_seq_static(ctx,0x81,0x01,0x00);
+	lcm_dcs_write_seq_static(ctx,0x03,0x01);
+	lcm_dcs_write_seq_static(ctx,0x90,0x03,0x03);
+	lcm_dcs_write_seq_static(ctx,0x91,0xAB,0x28,0x00,0x0C,0xD2,0x00,0x02,0x25,0x01,0x14,0x00,0x07,0x09,0x75,0x08,0x7A,0x10,0xF0);
+	lcm_dcs_write_seq_static(ctx,0x2F,0x02);
+	lcm_dcs_write_seq_static(ctx,0xF0,0x55,0xAA,0x52,0x08,0x0A);
+	lcm_dcs_write_seq_static(ctx,0x6F,0x6B);
+	lcm_dcs_write_seq_static(ctx,0xB0,0x00);
+	lcm_dcs_write_seq_static(ctx,0x11);
+	usleep_range(120000, 120100);
+	lcm_dcs_write_seq_static(ctx,0x29);
+	DISP_INFO(" -\n");
 }
 
 static int lcm_disable(struct drm_panel *panel)
@@ -492,7 +516,6 @@ static struct mtk_panel_params ext_params = {
 		},
 	.data_rate = 836,
 	.oplus_serial_para0 = 0xA3,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 67,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -502,7 +525,6 @@ static struct mtk_panel_params ext_params = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 60,
         },
-	.panel_bpp = 10,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -583,7 +605,6 @@ static struct mtk_panel_params ext_params_90hz = {
 		},
 	.data_rate = 836,
 	.oplus_serial_para0 = 0xA3,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 56,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -593,7 +614,6 @@ static struct mtk_panel_params ext_params_90hz = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 90,
         },
-	.panel_bpp = 10,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -676,7 +696,6 @@ static struct mtk_panel_params ext_params_120hz = {
 		},
 	.data_rate = 978,
 	.oplus_serial_para0 = 0xA3,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 50,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -686,7 +705,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	.dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 120,
         },
-	.panel_bpp = 10,
 };
 
 static int panel_ata_check(struct drm_panel *panel)
@@ -862,7 +880,6 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	aod_state = false;
 	/* keep vcore off */
 	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_SUSPEND_PWR_CTRL, MT_LPM_SMC_ACT_SET, PW_REG_SPM_VCORE_REQ, 0x0);
-	lcm_setbacklight_cmdq(dsi, cb, handle, last_backlight);
 	DISP_DEBUG(" call lpm_smc_spm_dbg keep vcore off for exit AOD!\n");
 	DISP_DEBUG("success\n");
 
@@ -1014,10 +1031,6 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-	if (!m) {
-		pr_err("invalid drm_display_mode\n");
-		return 1;
-	}
 
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
@@ -1078,16 +1091,7 @@ static int mode_switch(struct drm_panel *panel,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
 {
 	int ret = 0;
-	struct lcm *ctx = NULL;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
-	if (!m) {
-		pr_err("%s invalid drm_display_mode\n", __func__);
-		return 1;
-	}
-
-	if (panel) {
-		ctx = panel_to_lcm(panel);
-	}
 
 	DISP_INFO("cur_mode = %d dst_mode %d\n", cur_mode, dst_mode);
 
@@ -1100,9 +1104,6 @@ static int mode_switch(struct drm_panel *panel,
 	} else
 		ret = 1;
 
-	if (ctx) {
-		ctx->m = m;
-	}
 	return ret;
 }
 

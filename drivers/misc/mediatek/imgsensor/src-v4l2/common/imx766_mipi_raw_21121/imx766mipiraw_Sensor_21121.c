@@ -73,11 +73,6 @@ static kal_uint16 previous_exp_cnt;
 static void commit_write_sensor(struct subdrv_ctx *ctx)
 {
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
-
-#define AK7314AF_I2C_SLAVE_ADDR 0x18
-#define AK7314AF_INIT_REG       0x02
-#define AK7314AF_INIT_VUALE     0X00
-
     if (_size_to_write && !ctx->fast_mode_on) {
         imx766_table_write_cmos_sensor_8(ctx, _i2c_data, _size_to_write);
         memset(_i2c_data, 0x0, sizeof(_i2c_data));
@@ -344,15 +339,15 @@ static struct imgsensor_info_struct imgsensor_info = {
     },
 
     .slim_video = { /* Reg_M-1 QBIN(HVBIN) - V2H2_FHD_2048x1152_120FPS */
-        .pclk = 1300800000,
+        .pclk = 3283200000,
         .linelength = 8816,
-        .framelength = 1228,
+        .framelength = 3100,
         .startx = 0,
         .starty = 0,
         .grabwindow_width = 2048,
         .grabwindow_height = 1152,
         .mipi_data_lp2hs_settle_dc = 85,
-        .mipi_pixel_rate = 517030000,
+        .mipi_pixel_rate = 1780800000,
         .max_framerate = 1200, /* 120fps */
     },
 
@@ -2118,7 +2113,7 @@ static int get_imgsensor_id(struct subdrv_ctx *ctx, UINT32 *sensor_id)
                     | read_cmos_sensor_8(ctx, 0x0017));
             if (*sensor_id == IMX766_SENSOR_ID) {
                 *sensor_id = imgsensor_info.sensor_id;
-                pr_info("i2c write id: 0x%x, sensor id: 0x%x\n",
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
                     ctx->i2c_write_id, *sensor_id);
                 read_sensor_Cali(ctx);
                 if (first_read) {
@@ -2166,19 +2161,8 @@ static int open(struct subdrv_ctx *ctx)
     kal_uint8 i = 0;
     kal_uint8 retry = 2;
     kal_uint16 sensor_id = 0;
-    int ret = -1;
 
     LOG_INF("IMX766 open Start\n");
-
-    if (ctx->is_esd_enable == true) {
-        LOG_INF("Esd reset occur, reinit vcm");
-        ret = adaptor_i2c_wr_u8_u8(ctx->i2c_client, AK7314AF_I2C_SLAVE_ADDR >> 1,
-                                        AK7314AF_INIT_REG, AK7314AF_INIT_VUALE);
-        if (ret < 0) {
-            pr_err("reinit vcm fail");
-        }
-        ctx->is_esd_enable = false;
-    }
     /*sensor have two i2c address 0x6c 0x6d & 0x21 0x20,
      *we should detect the module used i2c address
      */
@@ -2189,7 +2173,7 @@ static int open(struct subdrv_ctx *ctx)
                     | read_cmos_sensor_8(ctx, 0x0017));
             if (sensor_id == IMX766_SENSOR_ID) {
                 sensor_id = imgsensor_info.sensor_id;
-                pr_info("i2c write id: 0x%x, sensor id: 0x%x\n",
+                LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
                     ctx->i2c_write_id, sensor_id);
                 break;
             }
@@ -3862,14 +3846,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
             set_shutter(ctx, *feature_data);
         streaming_control(ctx, KAL_TRUE);
         break;
-    case SENSOR_FEATURE_GET_EXPOSURE_COUNT_BY_SCENARIO:
-        if (*feature_data == SENSOR_SCENARIO_ID_CUSTOM8 ||
-            *feature_data == SENSOR_SCENARIO_ID_CUSTOM9) {
-            *(feature_data + 1) = 2;  /* 2DOL */
-        } else {
-            *(feature_data + 1) = 1;  /* 1DOL */
-        }
-        break;
     case SENSOR_FEATURE_GET_BINNING_TYPE:
         switch (*(feature_data + 1)) {
         case SENSOR_SCENARIO_ID_CUSTOM3:
@@ -4107,8 +4083,8 @@ static struct mtk_mbus_frame_desc_entry frame_desc_slim[] = {
         .bus.csi2 = {
             .channel = 0,
             .data_type = 0x30,
-            .hsize = 1024,
-            .vsize = 576,
+            .hsize = 1280,
+            .vsize = 288,
             .user_data_desc = VC_PDAF_STATS,
         },
     },

@@ -308,14 +308,6 @@ static irqreturn_t mtk_pmic_keys_release_irq_handler_thread(
 		__pm_relax(info->suspend_lock);
 	dev_info(info->keys->dev, "release key =%d using PMIC\n",
 			info->keycode);
-
-	//#ifdef OPLUS_BUG_STABILITY
-	if (aee_kpd_enable && info->keycode == KEY_VOLUMEUP) {
-		pr_err("pmic volup key triggered, pressed is %u\n", 0);
-		kpd_aee_handler(KEY_VOLUMEUP, 0);
-	}
-	//#endif /*OPLUS_BUG_STABILITY*/
-
 	return IRQ_HANDLED;
 }
 

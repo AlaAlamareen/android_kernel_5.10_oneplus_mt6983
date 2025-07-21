@@ -218,8 +218,6 @@ struct mtk_camsv_device {
 	atomic_t is_fifo_overflow;
 
 	unsigned int sof_count;
-	/* preisp used - for sync.*/
-	unsigned int tg_cnt;
 	u64 last_sof_time_ns;
 	unsigned int frame_wait_to_process;
 	struct notifier_block notifier_blk;
@@ -318,8 +316,7 @@ int mtk_cam_sv_dmao_enable(
 	struct mtk_camsv_device *dev, struct mtkcam_ipi_input_param *cfg_in_param);
 int mtk_cam_sv_fbc_enable(
 	struct mtk_camsv_device *dev, struct mtkcam_ipi_input_param *cfg_in_param);
-void mtk_cam_sv_vf_reset(struct mtk_cam_ctx *ctx,
-	struct mtk_camsv_device *dev);
+
 int mtk_cam_sv_tg_disable(struct mtk_camsv_device *dev);
 int mtk_cam_sv_top_disable(struct mtk_camsv_device *dev);
 int mtk_cam_sv_dmao_disable(struct mtk_camsv_device *dev);

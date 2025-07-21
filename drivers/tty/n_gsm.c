@@ -50,7 +50,6 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/gsmmux.h>
-#include "tty.h"
 
 static int debug;
 module_param(debug, int, 0600);
@@ -235,9 +234,8 @@ struct gsm_mux {
 	struct gsm_dlci *dlci[NUM_DLCI];
 	int old_c_iflag;		/* termios c_iflag value before attach */
 	bool constipated;		/* Asked by remote to shut up */
-	bool has_devices;		/* Devices were registered */
 
-	spinlock_t tx_lock;
+	struct mutex tx_mutex;
 	unsigned int tx_bytes;		/* TX data outstanding */
 #define TX_THRESH_HI		8192
 #define TX_THRESH_LO		2048
@@ -463,68 +461,6 @@ static u8 gsm_encode_modem(const struct gsm_dlci *dlci)
 	if (dlci->modem_tx & TIOCM_CD || dlci->gsm->initiator)
 		modembits |= MDM_DV;
 	return modembits;
-}
-
-/**
- *	gsm_register_devices	-	register all tty devices for a given mux index
- *
- *	@driver: the tty driver that describes the tty devices
- *	@index:  the mux number is used to calculate the minor numbers of the
- *	         ttys for this mux and may differ from the position in the
- *	         mux array.
- */
-static int gsm_register_devices(struct tty_driver *driver, unsigned int index)
-{
-	struct device *dev;
-	int i;
-	unsigned int base;
-
-	if (!driver || index >= MAX_MUX)
-		return -EINVAL;
-
-	base = index * NUM_DLCI; /* first minor for this index */
-	for (i = 1; i < NUM_DLCI; i++) {
-		/* Don't register device 0 - this is the control channel
-		 * and not a usable tty interface
-		 */
-		dev = tty_register_device(gsm_tty_driver, base + i, NULL);
-		if (IS_ERR(dev)) {
-			if (debug & 8)
-				pr_info("%s failed to register device minor %u",
-					__func__, base + i);
-			for (i--; i >= 1; i--)
-				tty_unregister_device(gsm_tty_driver, base + i);
-			return PTR_ERR(dev);
-		}
-	}
-
-	return 0;
-}
-
-/**
- *	gsm_unregister_devices	-	unregister all tty devices for a given mux index
- *
- *	@driver: the tty driver that describes the tty devices
- *	@index:  the mux number is used to calculate the minor numbers of the
- *	         ttys for this mux and may differ from the position in the
- *	         mux array.
- */
-static void gsm_unregister_devices(struct tty_driver *driver,
-				   unsigned int index)
-{
-	int i;
-	unsigned int base;
-
-	if (!driver || index >= MAX_MUX)
-		return;
-
-	base = index * NUM_DLCI; /* first minor for this index */
-	for (i = 1; i < NUM_DLCI; i++) {
-		/* Don't unregister device 0 - this is the control
-		 * channel and not a usable tty interface
-		 */
-		tty_unregister_device(gsm_tty_driver, base + i);
-	}
 }
 
 /**
@@ -884,15 +820,14 @@ static void __gsm_data_queue(struct gsm_dlci *dlci, struct gsm_msg *msg)
  *
  *	Add data to the transmit queue and try and get stuff moving
  *	out of the mux tty if not already doing so. Take the
- *	the gsm tx lock and dlci lock.
+ *	the gsm tx mutex and dlci lock.
  */
 
 static void gsm_data_queue(struct gsm_dlci *dlci, struct gsm_msg *msg)
 {
-	unsigned long flags;
-	spin_lock_irqsave(&dlci->gsm->tx_lock, flags);
+	mutex_lock(&dlci->gsm->tx_mutex);
 	__gsm_data_queue(dlci, msg);
-	spin_unlock_irqrestore(&dlci->gsm->tx_lock, flags);
+	mutex_unlock(&dlci->gsm->tx_mutex);
 }
 
 /**
@@ -904,7 +839,7 @@ static void gsm_data_queue(struct gsm_dlci *dlci, struct gsm_msg *msg)
  *	is data. Keep to the MRU of the mux. This path handles the usual tty
  *	interface which is a byte stream with optional modem data.
  *
- *	Caller must hold the tx_lock of the mux.
+ *	Caller must hold the tx_mutex of the mux.
  */
 
 static int gsm_dlci_data_output(struct gsm_mux *gsm, struct gsm_dlci *dlci)
@@ -967,7 +902,7 @@ static int gsm_dlci_data_output(struct gsm_mux *gsm, struct gsm_dlci *dlci)
  *	is data. Keep to the MRU of the mux. This path handles framed data
  *	queued as skbuffs to the DLCI.
  *
- *	Caller must hold the tx_lock of the mux.
+ *	Caller must hold the tx_mutex of the mux.
  */
 
 static int gsm_dlci_data_output_framed(struct gsm_mux *gsm,
@@ -983,7 +918,7 @@ static int gsm_dlci_data_output_framed(struct gsm_mux *gsm,
 	if (dlci->adaption == 4)
 		overhead = 1;
 
-	/* dlci->skb is locked by tx_lock */
+	/* dlci->skb is locked by tx_mutex */
 	if (dlci->skb == NULL) {
 		dlci->skb = skb_dequeue_tail(&dlci->skb_list);
 		if (dlci->skb == NULL)
@@ -1083,13 +1018,12 @@ static void gsm_dlci_data_sweep(struct gsm_mux *gsm)
 
 static void gsm_dlci_data_kick(struct gsm_dlci *dlci)
 {
-	unsigned long flags;
 	int sweep;
 
 	if (dlci->constipated)
 		return;
 
-	spin_lock_irqsave(&dlci->gsm->tx_lock, flags);
+	mutex_lock(&dlci->gsm->tx_mutex);
 	/* If we have nothing running then we need to fire up */
 	sweep = (dlci->gsm->tx_bytes < TX_THRESH_LO);
 	if (dlci->gsm->tx_bytes == 0) {
@@ -1100,7 +1034,7 @@ static void gsm_dlci_data_kick(struct gsm_dlci *dlci)
 	}
 	if (sweep)
 		gsm_dlci_data_sweep(dlci->gsm);
-	spin_unlock_irqrestore(&dlci->gsm->tx_lock, flags);
+	mutex_unlock(&dlci->gsm->tx_mutex);
 }
 
 /*
@@ -1322,7 +1256,6 @@ static void gsm_control_message(struct gsm_mux *gsm, unsigned int command,
 						const u8 *data, int clen)
 {
 	u8 buf[1];
-	unsigned long flags;
 
 	switch (command) {
 	case CMD_CLD: {
@@ -1344,9 +1277,9 @@ static void gsm_control_message(struct gsm_mux *gsm, unsigned int command,
 		gsm->constipated = false;
 		gsm_control_reply(gsm, CMD_FCON, NULL, 0);
 		/* Kick the link in case it is idling */
-		spin_lock_irqsave(&gsm->tx_lock, flags);
+		mutex_lock(&gsm->tx_mutex);
 		gsm_data_kick(gsm, NULL);
-		spin_unlock_irqrestore(&gsm->tx_lock, flags);
+		mutex_unlock(&gsm->tx_mutex);
 		break;
 	case CMD_FCOFF:
 		/* Modem wants us to STFU */
@@ -1483,7 +1416,7 @@ static struct gsm_control *gsm_control_send(struct gsm_mux *gsm,
 		unsigned int command, u8 *data, int clen)
 {
 	struct gsm_control *ctrl = kzalloc(sizeof(struct gsm_control),
-						GFP_ATOMIC);
+						GFP_KERNEL);
 	unsigned long flags;
 	if (ctrl == NULL)
 		return NULL;
@@ -2222,13 +2155,12 @@ static void gsm_error(struct gsm_mux *gsm,
 static void gsm_cleanup_mux(struct gsm_mux *gsm, bool disc)
 {
 	int i;
-	struct gsm_dlci *dlci;
+	struct gsm_dlci *dlci = gsm->dlci[0];
 	struct gsm_msg *txq, *ntxq;
 
 	gsm->dead = true;
 	mutex_lock(&gsm->mutex);
 
-	dlci = gsm->dlci[0];
 	if (dlci) {
 		if (disc && dlci->state != DLCI_CLOSED) {
 			gsm_dlci_begin_close(dlci);
@@ -2241,15 +2173,9 @@ static void gsm_cleanup_mux(struct gsm_mux *gsm, bool disc)
 	del_timer_sync(&gsm->t2_timer);
 
 	/* Free up any link layer users and finally the control channel */
-	if (gsm->has_devices) {
-		gsm_unregister_devices(gsm_tty_driver, gsm->num);
-		gsm->has_devices = false;
-	}
 	for (i = NUM_DLCI - 1; i >= 0; i--)
-		if (gsm->dlci[i]) {
+		if (gsm->dlci[i])
 			gsm_dlci_release(gsm->dlci[i]);
-			gsm->dlci[i] = NULL;
-		}
 	mutex_unlock(&gsm->mutex);
 	/* Now wipe the queues */
 	tty_ldisc_flush(gsm->tty);
@@ -2270,21 +2196,15 @@ static void gsm_cleanup_mux(struct gsm_mux *gsm, bool disc)
 static int gsm_activate_mux(struct gsm_mux *gsm)
 {
 	struct gsm_dlci *dlci;
-	int ret;
 
 	if (gsm->encoding == 0)
 		gsm->receive = gsm0_receive;
 	else
 		gsm->receive = gsm1_receive;
 
-	ret = gsm_register_devices(gsm_tty_driver, gsm->num);
-	if (ret)
-		return ret;
-
 	dlci = gsm_dlci_alloc(gsm, 0);
 	if (dlci == NULL)
 		return -ENOMEM;
-	gsm->has_devices = true;
 	gsm->dead = false;		/* Tty opens are now permissible */
 	return 0;
 }
@@ -2305,6 +2225,7 @@ static void gsm_free_mux(struct gsm_mux *gsm)
 			break;
 		}
 	}
+	mutex_destroy(&gsm->tx_mutex);
 	mutex_destroy(&gsm->mutex);
 	kfree(gsm->txframe);
 	kfree(gsm->buf);
@@ -2376,12 +2297,12 @@ static struct gsm_mux *gsm_alloc_mux(void)
 	}
 	spin_lock_init(&gsm->lock);
 	mutex_init(&gsm->mutex);
+	mutex_init(&gsm->tx_mutex);
 	kref_init(&gsm->ref);
 	INIT_LIST_HEAD(&gsm->tx_list);
 	timer_setup(&gsm->t2_timer, gsm_control_retransmit, 0);
 	init_waitqueue_head(&gsm->event);
 	spin_lock_init(&gsm->control_lock);
-	spin_lock_init(&gsm->tx_lock);
 
 	gsm->t1 = T1;
 	gsm->t2 = T2;
@@ -2406,6 +2327,7 @@ static struct gsm_mux *gsm_alloc_mux(void)
 	}
 	spin_unlock(&gsm_mux_lock);
 	if (i == MAX_MUX) {
+		mutex_destroy(&gsm->tx_mutex);
 		mutex_destroy(&gsm->mutex);
 		kfree(gsm->txframe);
 		kfree(gsm->buf);
@@ -2550,13 +2472,38 @@ static int gsmld_output(struct gsm_mux *gsm, u8 *data, int len)
  *	will need moving to an ioctl path.
  */
 
-static void gsmld_attach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
+static int gsmld_attach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
 {
+	unsigned int base;
+	int ret, i;
+
 	gsm->tty = tty_kref_get(tty);
 	/* Turn off tty XON/XOFF handling to handle it explicitly. */
 	gsm->old_c_iflag = tty->termios.c_iflag;
 	tty->termios.c_iflag &= (IXON | IXOFF);
+	ret =  gsm_activate_mux(gsm);
+	if (ret != 0)
+		tty_kref_put(gsm->tty);
+	else {
+		/* Don't register device 0 - this is the control channel and not
+		   a usable tty interface */
+		base = mux_num_to_base(gsm); /* Base for this MUX */
+		for (i = 1; i < NUM_DLCI; i++) {
+			struct device *dev;
+
+			dev = tty_register_device(gsm_tty_driver,
+							base + i, NULL);
+			if (IS_ERR(dev)) {
+				for (i--; i >= 1; i--)
+					tty_unregister_device(gsm_tty_driver,
+								base + i);
+				return PTR_ERR(dev);
+			}
+		}
+	}
+	return ret;
 }
+
 
 /**
  *	gsmld_detach_gsm	-	stop doing 0710 mux
@@ -2568,7 +2515,12 @@ static void gsmld_attach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
 
 static void gsmld_detach_gsm(struct tty_struct *tty, struct gsm_mux *gsm)
 {
+	unsigned int base = mux_num_to_base(gsm); /* Base for this MUX */
+	int i;
+
 	WARN_ON(tty != gsm->tty);
+	for (i = 1; i < NUM_DLCI; i++)
+		tty_unregister_device(gsm_tty_driver, base + i);
 	/* Restore tty XON/XOFF handling. */
 	gsm->tty->termios.c_iflag = gsm->old_c_iflag;
 	tty_kref_put(gsm->tty);
@@ -2579,25 +2531,27 @@ static void gsmld_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 			      char *fp, int count)
 {
 	struct gsm_mux *gsm = tty->disc_data;
+	const unsigned char *dp;
+	char *f;
+	int i;
 	char flags = TTY_NORMAL;
 
 	if (debug & 4)
 		print_hex_dump_bytes("gsmld_receive: ", DUMP_PREFIX_OFFSET,
 				     cp, count);
 
-	for (; count; count--, cp++) {
-		if (fp)
-			flags = *fp++;
+	for (i = count, dp = cp, f = fp; i; i--, dp++) {
+		if (f)
+			flags = *f++;
 		switch (flags) {
 		case TTY_NORMAL:
-			if (gsm->receive)
-				gsm->receive(gsm, *cp);
+			gsm->receive(gsm, *dp);
 			break;
 		case TTY_OVERRUN:
 		case TTY_BREAK:
 		case TTY_PARITY:
 		case TTY_FRAME:
-			gsm_error(gsm, *cp, flags);
+			gsm_error(gsm, *dp, flags);
 			break;
 		default:
 			WARN_ONCE(1, "%s: unknown flag %d\n",
@@ -2662,6 +2616,7 @@ static void gsmld_close(struct tty_struct *tty)
 static int gsmld_open(struct tty_struct *tty)
 {
 	struct gsm_mux *gsm;
+	int ret;
 
 	if (tty->ops->write == NULL)
 		return -EINVAL;
@@ -2677,11 +2632,12 @@ static int gsmld_open(struct tty_struct *tty)
 	/* Attach the initial passive connection */
 	gsm->encoding = 1;
 
-	gsmld_attach_gsm(tty, gsm);
-
-	timer_setup(&gsm->t2_timer, gsm_control_retransmit, 0);
-
-	return 0;
+	ret = gsmld_attach_gsm(tty, gsm);
+	if (ret != 0) {
+		gsm_cleanup_mux(gsm, false);
+		mux_put(gsm);
+	}
+	return ret;
 }
 
 /**
@@ -2696,16 +2652,15 @@ static int gsmld_open(struct tty_struct *tty)
 static void gsmld_write_wakeup(struct tty_struct *tty)
 {
 	struct gsm_mux *gsm = tty->disc_data;
-	unsigned long flags;
 
 	/* Queue poll */
 	clear_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
-	spin_lock_irqsave(&gsm->tx_lock, flags);
+	mutex_lock(&gsm->tx_mutex);
 	gsm_data_kick(gsm, NULL);
 	if (gsm->tx_bytes < TX_THRESH_LO) {
 		gsm_dlci_data_sweep(gsm);
 	}
-	spin_unlock_irqrestore(&gsm->tx_lock, flags);
+	mutex_unlock(&gsm->tx_mutex);
 }
 
 /**
@@ -2748,7 +2703,6 @@ static ssize_t gsmld_write(struct tty_struct *tty, struct file *file,
 			   const unsigned char *buf, size_t nr)
 {
 	struct gsm_mux *gsm = tty->disc_data;
-	unsigned long flags;
 	int space;
 	int ret;
 
@@ -2756,13 +2710,13 @@ static ssize_t gsmld_write(struct tty_struct *tty, struct file *file,
 		return -ENODEV;
 
 	ret = -ENOBUFS;
-	spin_lock_irqsave(&gsm->tx_lock, flags);
+	mutex_lock(&gsm->tx_mutex);
 	space = tty_write_room(tty);
 	if (space >= nr)
 		ret = tty->ops->write(tty, buf, nr);
 	else
 		set_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
-	spin_unlock_irqrestore(&gsm->tx_lock, flags);
+	mutex_unlock(&gsm->tx_mutex);
 
 	return ret;
 }

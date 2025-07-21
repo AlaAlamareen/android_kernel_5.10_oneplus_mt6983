@@ -1357,25 +1357,9 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 	plane_ds =
 		(enum mtk_drm_dataspace)pending->prop_val[PLANE_PROP_DATASPACE];
 
-	if (plane_ds == MTK_DRM_DATASPACE_DISPLAY_P3) {
-		lcm_ds = MTK_DRM_DATASPACE_DISPLAY_P3;
-	}
-
-	/* #ifdef OPLUS_BUG_STABILITY */
-	if (to_mtk_crtc(crtc)->blendspace == MTK_DRM_COLOR_MODE_SRGB ||
-		to_mtk_crtc(crtc)->blendspace == MTK_DRM_COLOR_MODE_DISPLAY_P3) {
-		lcm_cm = (enum mtk_drm_color_mode)to_mtk_crtc(crtc)->blendspace;
-		lcm_ds = mtk_ovl_map_lcm_color_mode(lcm_cm);
-		if (pending->prop_val[PLANE_PROP_IS_BT2020]) {
-			//since bt2020 is not support in ovl,will replace as bt709
-			plane_ds = MTK_DRM_DATASPACE_DISPLAY_P3;
-		}
-		DDPDBG("blendspace :%d %d %d \n",
-			to_mtk_crtc(crtc)->blendspace,
-			plane_ds,
-			lcm_ds);
-	}
-	/* #endif OPLUS_BUG_STABILITY */
+    if (plane_ds == MTK_DRM_DATASPACE_DISPLAY_P3) {
+        lcm_ds = MTK_DRM_DATASPACE_DISPLAY_P3;
+    }
 
 	DDPDBG("%s+ idx:%d ds:0x%08x->0x%08x\n", __func__, idx, plane_ds,
 	       lcm_ds);
@@ -1440,7 +1424,6 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 	case MTK_DRM_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
 	case MTK_DRM_DATASPACE_STANDARD_BT601_525:
 	case MTK_DRM_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
-	case MTK_DRM_DATASPACE_STANDARD_DCI_P3:
 		ret = ((plane_ds & MTK_DRM_DATASPACE_RANGE_MASK) ==
 			MTK_DRM_DATASPACE_RANGE_FULL)
 			       ? OVL_CON_MTX_JPEG_TO_RGB
@@ -1448,6 +1431,7 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 		break;
 
 	case MTK_DRM_DATASPACE_STANDARD_BT709:
+	case MTK_DRM_DATASPACE_STANDARD_DCI_P3:
 	case MTK_DRM_DATASPACE_STANDARD_BT2020:
 		ret = OVL_CON_MTX_BT709_TO_RGB;
 		break;

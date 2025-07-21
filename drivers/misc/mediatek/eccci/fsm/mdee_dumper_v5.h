@@ -230,9 +230,7 @@ struct mdee_dumper_v5 {
 //#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
 #define MODEM_MONITOR_ID          509    //modem crash
 #define BUF_LOG_LENGTH            2148
-int getSubstrIndex(char *srcStr, char *subStr);
-void deleteChar(char* str, int strLen, int index);
-unsigned int BKDRHash(const char* str, unsigned int len, int md_id);
+unsigned int BKDRHash(const char* str, unsigned int len);
 extern void mm_keylog_write_modemdump(unsigned int hashId, const char *cause, int id, char *subsys);
 
 //#endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/

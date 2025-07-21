@@ -2887,9 +2887,7 @@
 			status = "okay";
 			reg = <0 0x1e050000 0 0x9000>, /* ITCM */
 				<0 0x1e020000 0 0x8000>; /* DTCM */
-			//modified for enlarging adsp image size
-			//system = <0 0x50000000 0 0x900000>;
-			system = <0 0x50000000 0 0xa00000>;
+			system = <0 0x50000000 0 0x900000>;
 			interrupts = <GIC_SPI 638 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 640 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 642 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -2902,9 +2900,7 @@
 			status = "okay";
 			reg = <0 0x1e0c0000 0 0x9000>, /* ITCM */
 				<0 0x1e090000 0 0x8000>; /* DTCM */
-			//modified for enlarging adsp image size
-			//system = <0 0x50900000 0 0x900000>;
-			system = <0 0x50a00000 0 0x900000>;
+			system = <0 0x50900000 0 0x900000>;
 			interrupts = <GIC_SPI 639 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 641 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 643 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5576,8 +5572,7 @@
 				      < 9 0x1000   0x0>, /* sensor list */
 				      <10 0x2000   0x0>, /* sensor debug */
 				      <11 0x100    0x0>, /* sensor custom writer */
-				      <12 0x100    0x0>, /* sensor custom reader */
-				      <13 0x11000  0x0>; /* sensor debug kit 13 */
+				      <12 0x100    0x0>; /* sensor custom reader */
 
 			memorydump = <0x180000>, /* l2tcm */
 				     <0x03c000>, /* l1c */
@@ -5860,8 +5855,6 @@
 				"disp_token_disp_va_end0",
 				"disp_token_disp_va_start2",
 				"disp_token_disp_va_end2",
-				"disp_token_disp_te0",
-				"disp_token_disp_prete0",
 				"disp_gpio_te1";
 
 			gce-events = <&gce CMDQ_EVENT_MMSYS_STREAM_DONE_ENG_EVENT_0>,
@@ -5886,8 +5879,6 @@
 				<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
 				<&gce CMDQ_SYNC_TOKEN_DISP_VA_START>,
 				<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
-				<&gce CMDQ_SYNC_TOKEN_TE_0>,
-				<&gce CMDQ_SYNC_TOKEN_PRETE_0>,
 				<&gce CMDQ_EVENT_GCE_EVENT_DSI1_TE_I>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
@@ -9740,7 +9731,7 @@
 		};
 
 		mrdump_ext_rst: mrdump_ext_rst {
-			//compatible = "mediatek, mrdump_ext_rst-eint";
+			compatible = "mediatek, mrdump_ext_rst-eint";
 			mode = "IRQ";
 			status = "okay";
 		};

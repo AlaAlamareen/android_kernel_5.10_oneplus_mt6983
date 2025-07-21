@@ -569,14 +569,8 @@ int ionic_port_reset(struct ionic *ionic)
 
 static int __init ionic_init_module(void)
 {
-	int ret;
-
 	ionic_debugfs_create();
-	ret = ionic_bus_register_driver();
-	if (ret)
-		ionic_debugfs_destroy();
-
-	return ret;
+	return ionic_bus_register_driver();
 }
 
 static void __exit ionic_cleanup_module(void)

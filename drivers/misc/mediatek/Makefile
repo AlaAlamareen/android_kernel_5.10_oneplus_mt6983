@@ -118,7 +118,6 @@ obj-$(CONFIG_MTK_BOOT_COMMON) += boot_common/
 #endif
 obj-$(CONFIG_MTK_TIMER_ACCURACY_TEST) += timer/
 obj-$(CONFIG_MTK_CAMERA_LDO) += wl2868c/
-obj-$(CONFIG_MTK_CAMERA_LDO) += aw37004/
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 #Add for DFX camera log report
 obj-$(CONFIG_MTK_V4L2_IMGSENSOR) += imgsensor/oplus/

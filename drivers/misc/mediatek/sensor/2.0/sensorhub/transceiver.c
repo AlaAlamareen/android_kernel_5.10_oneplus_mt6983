@@ -160,10 +160,7 @@ static bool transceiver_wakeup_check(uint8_t action, uint8_t sensor_type)
 			sensor_type == SENSOR_TYPE_GESTURE_PROX ||
 			sensor_type == SENSOR_TYPE_FOLD_STATE ||
 			sensor_type == SENSOR_TYPE_REAR_PROXIMITY ||
-			sensor_type == SENSOR_TYPE_AMBIENTE_PROX ||
-			sensor_type == SENSOR_TYPE_FREE_FALL ||
-			sensor_type == SENSOR_TYPE_FLIGHT_DETECT ||
-			sensor_type == SENSOR_TYPE_POCKET))
+			sensor_type == SENSOR_TYPE_AMBIENTE_PROX))
 //#endif
 		return true;
 
@@ -924,7 +921,7 @@ static int __init transceiver_init(void)
 {
 	int ret = 0;
 	struct transceiver_device *dev = &transceiver_dev;
-	//struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
 	mutex_init(&dev->enable_lock);
 	mutex_init(&dev->flush_lock);
@@ -1013,8 +1010,7 @@ static int __init transceiver_init(void)
 		pr_err("create thread fail %d\n", ret);
 		goto out_pm_notify;
 	}
-	//sched_setscheduler(dev->task, SCHED_FIFO, &param);
-	sched_set_fifo_low(dev->task);
+	sched_setscheduler(dev->task, SCHED_FIFO, &param);
 
 	/*
 	 * NOTE: handler resgiter must before host ready to avoid lost

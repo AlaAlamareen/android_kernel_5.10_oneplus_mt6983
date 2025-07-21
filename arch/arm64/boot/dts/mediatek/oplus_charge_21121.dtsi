@@ -354,11 +354,6 @@
 					OPLUS_IC_FUNC_GAUGE_GET_AFI_UPDATE_DONE
 					OPLUS_IC_FUNC_GAUGE_CHECK_RESET
 					OPLUS_IC_FUNC_GAUGE_SET_RESET
-					OPLUS_IC_FUNC_GAUGE_GET_DEVICE_TYPE_FOR_BCC
-					OPLUS_IC_FUNC_GAUGE_GET_DOD0
-					OPLUS_IC_FUNC_GAUGE_GET_DOD0_PASSED_Q
-					OPLUS_IC_FUNC_GAUGE_GET_QMAX
-					OPLUS_IC_FUNC_GAUGE_GET_QMAX_PASSED_Q
 				>;
 				virqs = <
 					OPLUS_IC_VIRQ_ERR
@@ -802,10 +797,6 @@
 };
 
 &soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
-	};
 	oplus_chg_wired: oplus,wired {
 		compatible = "oplus,wired";
 
@@ -903,9 +894,6 @@
 
 		oplus,vooc_show_ui_soc_decimal;
 		oplus,ui_soc_decimal_speedmin = <2>;
-		oplus,gauge_stuck_jump_support;
-		oplus,gauge_stuck_threshold = <15>;
-		oplus,gauge_stuck_time = <50>;
 	};
 
 	oplus_monitor: oplus,monitor {
@@ -976,20 +964,6 @@
 			pinctrl-8 = <&asic_data_active>;
 			pinctrl-9 = <&asic_data_sleep>;
 		};
-	};
-	oplus_smart_charge: oplus,smart_charge {
-		compatible = "oplus,smart_charge";
-	};
-
-	oplus_cpa: oplus,cpa {
-		compatible = "oplus,cpa";
-		/* format: <protocol_type power_w> */
-		oplus,protocol_list = <CHG_PROTOCOL_VOOC 80
-				       CHG_PROTOCOL_PD   18
-				       CHG_PROTOCOL_QC   18>;
-		oplus,default_protocol_list = <CHG_PROTOCOL_VOOC
-					       CHG_PROTOCOL_PD
-					       CHG_PROTOCOL_QC>;
 	};
 };
 

@@ -234,18 +234,21 @@ static void iavf_irq_disable(struct iavf_adapter *adapter)
 }
 
 /**
- * iavf_irq_enable_queues - Enable interrupt for all queues
+ * iavf_irq_enable_queues - Enable interrupt for specified queues
  * @adapter: board private structure
+ * @mask: bitmap of queues to enable
  **/
-void iavf_irq_enable_queues(struct iavf_adapter *adapter)
+void iavf_irq_enable_queues(struct iavf_adapter *adapter, u32 mask)
 {
 	struct iavf_hw *hw = &adapter->hw;
 	int i;
 
 	for (i = 1; i < adapter->num_msix_vectors; i++) {
-		wr32(hw, IAVF_VFINT_DYN_CTLN1(i - 1),
-		     IAVF_VFINT_DYN_CTLN1_INTENA_MASK |
-		     IAVF_VFINT_DYN_CTLN1_ITR_INDX_MASK);
+		if (mask & BIT(i - 1)) {
+			wr32(hw, IAVF_VFINT_DYN_CTLN1(i - 1),
+			     IAVF_VFINT_DYN_CTLN1_INTENA_MASK |
+			     IAVF_VFINT_DYN_CTLN1_ITR_INDX_MASK);
+		}
 	}
 }
 
@@ -259,7 +262,7 @@ void iavf_irq_enable(struct iavf_adapter *adapter, bool flush)
 	struct iavf_hw *hw = &adapter->hw;
 
 	iavf_misc_irq_enable(adapter);
-	iavf_irq_enable_queues(adapter);
+	iavf_irq_enable_queues(adapter, ~0);
 
 	if (flush)
 		iavf_flush(hw);
@@ -1315,6 +1318,7 @@ static void iavf_fill_rss_lut(struct iavf_adapter *adapter)
 static int iavf_init_rss(struct iavf_adapter *adapter)
 {
 	struct iavf_hw *hw = &adapter->hw;
+	int ret;
 
 	if (!RSS_PF(adapter)) {
 		/* Enable PCTYPES for RSS, TCP/UDP with IPv4/IPv6 */
@@ -1330,8 +1334,9 @@ static int iavf_init_rss(struct iavf_adapter *adapter)
 
 	iavf_fill_rss_lut(adapter);
 	netdev_rss_key_fill((void *)adapter->rss_key, adapter->rss_key_size);
+	ret = iavf_config_rss(adapter);
 
-	return iavf_config_rss(adapter);
+	return ret;
 }
 
 /**
@@ -1377,16 +1382,19 @@ static int iavf_alloc_q_vectors(struct iavf_adapter *adapter)
 static void iavf_free_q_vectors(struct iavf_adapter *adapter)
 {
 	int q_idx, num_q_vectors;
+	int napi_vectors;
 
 	if (!adapter->q_vectors)
 		return;
 
 	num_q_vectors = adapter->num_msix_vectors - NONQ_VECS;
+	napi_vectors = adapter->num_active_queues;
 
 	for (q_idx = 0; q_idx < num_q_vectors; q_idx++) {
 		struct iavf_q_vector *q_vector = &adapter->q_vectors[q_idx];
 
-		netif_napi_del(&q_vector->napi);
+		if (q_idx < napi_vectors)
+			netif_napi_del(&q_vector->napi);
 	}
 	kfree(adapter->q_vectors);
 	adapter->q_vectors = NULL;
@@ -4032,11 +4040,7 @@ static int __init iavf_init_module(void)
 		pr_err("%s: Failed to create workqueue\n", iavf_driver_name);
 		return -ENOMEM;
 	}
-
 	ret = pci_register_driver(&iavf_driver);
-	if (ret)
-		destroy_workqueue(iavf_wq);
-
 	return ret;
 }
 

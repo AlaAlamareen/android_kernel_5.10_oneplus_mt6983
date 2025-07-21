@@ -35,12 +35,6 @@
 #include "mtk_heap_priv.h"
 #include "mtk_heap.h"
 
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-#include "../../../mm/chp_ext.h"
-#endif
-
-#include "mm_osvelte/mm-trace.h"
-
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
 #include "mm_boost_pool/oplus_boost_pool_mtk.h"
 #include "mm_boost_pool/trace_dma_buf.h"
@@ -565,13 +559,6 @@ static void system_heap_buf_free(struct deferred_freelist_item *item,
 	for_each_sgtable_sg(table, sg, i) {
 		struct page *page = sg_page(sg);
 
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-		/*refill hugepage, if the page is alloc from hugepage pool*/
-		if(unlikely(is_chp_ext_pages(page, compound_order(page)))){
-			put_page(page);
-			continue;
-		}
-#endif
 		if (reason == DF_UNDER_PRESSURE) {
 			__free_pages(page, compound_order(page));
 		} else {
@@ -777,8 +764,8 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
 	struct boost_pool *boost_pool = has_boost_pool(heap);
 
-	/* for size < 32K, we do not need alloc from boost pool. */
-	if (len < SZ_32K)
+	/* for size < 1M, we do not need alloc from boost pool. */
+	if (len < SZ_1M)
 		boost_pool = NULL;
 #endif /*CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 
@@ -809,10 +796,10 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	if (!buffer)
 		return ERR_PTR(-ENOMEM);
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_OSVELTE)
-	mm_trace_fmt_begin("%s %zu,%lu,%lu", dma_heap_get_name(heap),
-		           sizeof(*buffer), atomic64_read(&dma_heap_normal_total), len);
-#endif /* CONFIG_OPLUS_FEATURE_MM_OSVELTE */
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+	trace_dma_buf_alloc_start(len, uncached);
+#endif /*CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
+
 	INIT_LIST_HEAD(&buffer->attachments);
 	mutex_init(&buffer->lock);
 	buffer->heap = heap;
@@ -899,9 +886,9 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 		dma_unmap_sgtable(dma_heap_get_dev(heap), table, DMA_BIDIRECTIONAL, 0);
 	}
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_OSVELTE)
-	mm_trace_fmt_end();
-#endif /* CONFIG_OPLUS_FEATURE_MM_OSVELTE */
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL)
+	trace_dma_buf_alloc_end(len, uncached);
+#endif /*CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL */
 	atomic64_add(dmabuf->size, &dma_heap_normal_total);
 
 	return dmabuf;
@@ -910,27 +897,13 @@ free_pages:
 	for_each_sgtable_sg(table, sg, i) {
 		struct page *p = sg_page(sg);
 
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-		__free_pages_ext(p, compound_order(p));
-#else
 		__free_pages(p, compound_order(p));
-#endif
 	}
 	sg_free_table(table);
 free_buffer:
-	list_for_each_entry_safe(page, tmp_page, &pages, lru) {
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-		__free_pages_ext(page, compound_order(page));
-#else
+	list_for_each_entry_safe(page, tmp_page, &pages, lru)
 		__free_pages(page, compound_order(page));
-#endif
-	}
 	kfree(buffer);
-
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_OSVELTE)
-	mm_trace_fmt_end();
-#endif /* CONFIG_OPLUS_FEATURE_MM_OSVELTE */
-
 	return ERR_PTR(ret);
 }
 
@@ -1243,9 +1216,6 @@ int is_system_heap_dmabuf(const struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(is_system_heap_dmabuf);
 
-
-hang_dump_cb hang_dump_proc;
-EXPORT_SYMBOL_GPL(hang_dump_proc);
 
 module_init(system_heap_create);
 MODULE_LICENSE("GPL v2");

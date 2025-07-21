@@ -395,6 +395,10 @@ void mtu3_start(struct mtu3 *mtu)
 
 	if (mtu->softconnect)
 		mtu3_dev_on_off(mtu, 1);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	else if (!mtu->is_gadget_ready)
+		ssusb_phy_dp_pullup(mtu->ssusb);
+#endif
 }
 
 void mtu3_stop(struct mtu3 *mtu)
@@ -968,6 +972,9 @@ static int mtu3_set_dma_mask(struct mtu3 *mtu)
 int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 {
 	struct device *dev = ssusb->dev;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct device_node *np = dev->of_node;
+#endif
 	struct platform_device *pdev = to_platform_device(dev);
 	struct mtu3 *mtu = NULL;
 	int ret = -ENOMEM;
@@ -1031,6 +1038,11 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		mtu3_stop(mtu);
 
 	ssusb_dev_debugfs_init(ssusb);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	dev_info(dev, "remove cdp-block property\n");
+	of_remove_property(np, of_find_property(np, "cdp-block", NULL));
+#endif
 
 	dev_dbg(dev, " %s() done...\n", __func__);
 

@@ -472,7 +472,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.clk_trail = 14,
 			.hs_trail = 11,
 		},
-		.panel_bpp = 10,
 	},
 };
 

@@ -70,7 +70,6 @@ static int xgf_cfg_spid;
 static int xgf_ema2_enable = 1;
 static int xgf_camera_flag;
 static int xgf_display_rate = DEFAULT_DFRC;
-static int xgf_filter_dep_task_enable;
 static DEFINE_MUTEX(fstb_ko_lock);
 int fstb_frame_num = 20;
 EXPORT_SYMBOL(fstb_frame_num);
@@ -105,7 +104,6 @@ module_param(xgf_uboost, int, 0644);
 module_param(xgf_stddev_multi, int, 0644);
 module_param(xgf_cfg_spid, int, 0644);
 module_param(xgf_ema2_enable, int, 0644);
-module_param(xgf_filter_dep_task_enable, int, 0644);
 module_param(fstb_frame_num, int, 0644);
 module_param(fstb_no_stable_thr, int, 0644);
 module_param(fstb_can_update_thr, int, 0644);
@@ -1879,22 +1877,6 @@ int has_xgf_dep(pid_t tid)
 	return ret;
 }
 
-static int xgf_filter_non_app_dep_task(int tgid, int target_tid)
-{
-	int ret = 0;
-	int local_tgid = 0;
-
-	if (!xgf_filter_dep_task_enable)
-		goto out;
-
-	local_tgid = xgf_get_process_id(target_tid);
-	if (local_tgid <= 0 || local_tgid != tgid)
-		ret = 1;
-
-out:
-	return ret;
-}
-
 int gbe2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 {
 	struct xgf_render *render_iter;
@@ -2026,20 +2008,17 @@ int fpsgo_fbt2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 
 			if (out_iter->tid < pre_iter->tid) {
 				if (out_iter->render_dep
-					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)
-					&& !xgf_filter_non_app_dep_task(render_iter->parent, out_iter->tid))
+					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost))
 					counts++;
 				out_rbn = rb_next(out_rbn);
 			} else if (out_iter->tid > pre_iter->tid) {
 				if (pre_iter->render_dep
-					&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost)
-					&& !xgf_filter_non_app_dep_task(render_iter->parent, pre_iter->tid))
+					&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost))
 					counts++;
 				pre_rbn = rb_next(pre_rbn);
 			} else {
 				if ((out_iter->render_dep || pre_iter->render_dep)
-					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)
-					&& !xgf_filter_non_app_dep_task(render_iter->parent, out_iter->tid))
+					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost))
 					counts++;
 				out_rbn = rb_next(out_rbn);
 				pre_rbn = rb_next(pre_rbn);
@@ -2049,8 +2028,7 @@ int fpsgo_fbt2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 		while (out_rbn != NULL) {
 			out_iter = rb_entry(out_rbn, struct xgf_dep, rb_node);
 			if (out_iter->render_dep
-				&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)
-				&& !xgf_filter_non_app_dep_task(render_iter->parent, out_iter->tid))
+				&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost))
 				counts++;
 			out_rbn = rb_next(out_rbn);
 		}
@@ -2058,8 +2036,7 @@ int fpsgo_fbt2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 		while (pre_rbn != NULL) {
 			pre_iter = rb_entry(pre_rbn, struct xgf_dep, rb_node);
 			if (pre_iter->render_dep
-				&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost)
-				&& !xgf_filter_non_app_dep_task(render_iter->parent, pre_iter->tid))
+				&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost))
 				counts++;
 			pre_rbn = rb_next(pre_rbn);
 		}
@@ -2214,8 +2191,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 
 			if (out_iter->tid < pre_iter->tid) {
 				if (out_iter->render_dep && index < count
-					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)
-					&& !xgf_filter_non_app_dep_task(render_iter->parent, out_iter->tid)) {
+					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)) {
 					arr[index].pid = out_iter->tid;
 					arr[index].action = out_iter->action;
 					index++;
@@ -2223,8 +2199,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 				out_rbn = rb_next(out_rbn);
 			} else if (out_iter->tid > pre_iter->tid) {
 				if (pre_iter->render_dep && index < count
-					&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost)
-					&& !xgf_filter_non_app_dep_task(render_iter->parent, pre_iter->tid)) {
+					&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost)) {
 					arr[index].pid = pre_iter->tid;
 					arr[index].action = pre_iter->action;
 					index++;
@@ -2233,7 +2208,6 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 			} else {
 				if ((out_iter->render_dep || pre_iter->render_dep)
 					&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)
-					&& !xgf_filter_non_app_dep_task(render_iter->parent, out_iter->tid)
 					&& index < count) {
 					arr[index].pid = out_iter->tid;
 					arr[index].action = out_iter->action;
@@ -2247,8 +2221,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 		while (out_rbn != NULL) {
 			out_iter = rb_entry(out_rbn, struct xgf_dep, rb_node);
 			if (out_iter->render_dep && index < count
-				&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)
-				&& !xgf_filter_non_app_dep_task(render_iter->parent, out_iter->tid)) {
+				&& !xgf_tid_overlap(out_iter->tid, pid, xgf_r_uboost)) {
 				arr[index].pid = out_iter->tid;
 				arr[index].action = out_iter->action;
 				index++;
@@ -2259,8 +2232,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 		while (pre_rbn != NULL) {
 			pre_iter = rb_entry(pre_rbn, struct xgf_dep, rb_node);
 			if (pre_iter->render_dep && index < count
-				&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost)
-				&& !xgf_filter_non_app_dep_task(render_iter->parent, pre_iter->tid)) {
+				&& !xgf_tid_overlap(pre_iter->tid, pid, xgf_r_uboost)) {
 				arr[index].pid = pre_iter->tid;
 				arr[index].action = pre_iter->action;
 				index++;

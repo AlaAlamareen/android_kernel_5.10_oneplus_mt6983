@@ -26,7 +26,6 @@
 #else
 #define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level) ? 5000U : 0U))
 #endif
-#define IPI_FIRST_DEC_START_TIMEOUT_MS     (60000U)
 
 struct vcp_dec_mem_list {
 	struct vcodec_mem_obj mem;
@@ -195,11 +194,7 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len, bool is
 	if (!is_ack) {
 wait_ack:
 		/* wait for VCP's ACK */
-		if (*(__u32 *)msg == AP_IPIMSG_DEC_START && inst->ctx->state == MTK_STATE_INIT)
-			timeout = msecs_to_jiffies(IPI_FIRST_DEC_START_TIMEOUT_MS);
-		else
-			timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
-
+		timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
 		ret = wait_event_timeout(*msg_wq, *msg_signaled, timeout);
 		*msg_signaled = false;
 
@@ -230,7 +225,7 @@ wait_ack:
 	return 0;
 }
 
-static void handle_init_ack_msg(struct mtk_vcodec_dev *dev, struct vdec_vcu_ipi_init_ack *msg)
+static void handle_init_ack_msg(struct vdec_vcu_ipi_init_ack *msg)
 {
 	struct vdec_vcu_inst *vcu = (struct vdec_vcu_inst *)
 		(unsigned long)msg->ap_inst_addr;
@@ -244,10 +239,6 @@ static void handle_init_ack_msg(struct mtk_vcodec_dev *dev, struct vdec_vcu_ipi_
 
 	vcu->vsi = (void *)((__u64)vcp_get_reserve_mem_virt(VDEC_MEM_ID) + inst_offset);
 	vcu->inst_addr = msg->vcu_inst_addr;
-
-	dev->tf_info = (struct mtk_tf_info *)
-		((__u64)vcp_get_reserve_mem_virt(VDEC_MEM_ID) + VDEC_TF_INFO_OFFSET);
-
 	mtk_vcodec_debug(vcu, "- vcu_inst_addr = 0x%x", vcu->inst_addr);
 }
 
@@ -616,7 +607,7 @@ int vcp_dec_ipi_handler(void *arg)
 				wake_up(&vcu->wq_res);
 				break;
 			case VCU_IPIMSG_DEC_INIT_DONE:
-				handle_init_ack_msg(dev, (void *)obj->share_buf);
+				handle_init_ack_msg((void *)obj->share_buf);
 				vcu->ctx->state = MTK_STATE_INIT;
 			case VCU_IPIMSG_DEC_START_DONE:
 			case VCU_IPIMSG_DEC_DEINIT_DONE:

@@ -884,12 +884,6 @@ struct pd_port {
 	struct tcpc_device *tcpc;
 	struct mutex pd_lock;
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	/* miss msg */
-	bool miss_msg;
-	uint8_t rx_cap;
-#endif
-
 	/* PD */
 	bool msg_output_lock;
 
@@ -1678,10 +1672,5 @@ static inline uint8_t pd_get_swap_battery_nr(struct pd_port *pd_port)
 struct pd_battery_info *pd_get_battery_info(
 	struct pd_port *pd_port, enum pd_battery_reference ref);
 #endif	/* CONFIG_USB_PD_REV30 */
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-void pd_add_miss_msg(struct pd_port *pd_port,struct pd_event *pd_event,
-				uint8_t msg);
-#endif
 
 #endif /* PD_CORE_H_ */

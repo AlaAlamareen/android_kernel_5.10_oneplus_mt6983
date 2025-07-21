@@ -3,7 +3,7 @@
 
 #define AW210XX_I2C_NAME "aw210xx_led"
 
-#define LED_MAX_NUM							(6)
+#define LED_MAX_NUM							(3)
 #define AW_DEBUG 							(1)
 
 #if AW_DEBUG
@@ -340,14 +340,11 @@ typedef struct aw210xx_cfg {
 enum AW2023_LED_MODE{
 	AW210XX_LED_NONE = 0,
 	AW210XX_LED_CCMODE,
-	AW210XX_LED_NEW_ALWAYSON,
 	AW210XX_LED_BLINKMODE,
 	AW210XX_LED_BREATHMODE,
-	AW210XX_LED_INDIVIDUAL_CTL_BREATH,
-	AW210XX_LED_MUSICMODE,
 	AW210XX_LED_MAXMODE,
 };
-
+	
 enum AW210XX_LED_TYPE {
 	AW210xx_LED_RED = 0,
 	AW210xx_LED_GREEN,
@@ -355,13 +352,11 @@ enum AW210XX_LED_TYPE {
 	AW210xx_LED_ON,
 	AW210xx_LED_OFF,
 };
-
+	
 struct aw210xx_platform_data {
 	int imax;
 	const char *led_default_trigger;
 	int led_mode;
-	int br_brightness[4];
-	int color[4];
 	int rise_time_ms;
 	int hold_time_ms;
 	int fall_time_ms;
@@ -383,10 +378,7 @@ struct aw210xx {
 	struct work_struct cfg_work;
 	struct mutex lock;
 	int num_leds;
-	int led_groups_num;
-	int led_allocation_order[4];
 	int id;
-	int color_ratio[2];
 	uint8_t sdmd_flag;
 	uint8_t rgbmd_flag;
 	br_pwm_t br_res;
@@ -395,14 +387,11 @@ struct aw210xx {
 	uint8_t effect;
 	int enable_gpio;
 	int vbled_enable_gpio;
-	struct regulator *vbled;
-	uint32_t vbled_volt;
 	uint32_t rgbcolor;
 	uint32_t glo_current;
 	uint32_t set_current;
 	unsigned int imax;
 	int rgb_isnk_on;
-	int power_change_state;
 	bool led_enable;
 	struct delayed_work   breath_work;
 	bool esd_flag;

@@ -1221,11 +1221,11 @@ static unsigned long aw869xx_get_theory_time(struct aw_haptic *aw_haptic)
 	fre_val = (reg_val & 0x03) >> 0;
 
 	if (fre_val == 2 || fre_val == 3)
-		theory_time = ((uint64_t)aw_haptic->rtp_len / 12000) * 1000000;	/*12K */
+		theory_time = (aw_haptic->rtp_len / 12000) * 1000000;	/*12K */
 	if (fre_val == 0)
-		theory_time = ((uint64_t)aw_haptic->rtp_len / 24000) * 1000000;	/*24K */
+		theory_time = (aw_haptic->rtp_len / 24000) * 1000000;	/*24K */
 	if (fre_val == 1)
-		theory_time = ((uint64_t)aw_haptic->rtp_len / 48000) * 1000000;	/*48K */
+		theory_time = (aw_haptic->rtp_len / 48000) * 1000000;	/*48K */
 
 	aw_dev_info("%s: microsecond:%llu theory_time = %llu", __func__,
 		    aw_haptic->microsecond, theory_time);

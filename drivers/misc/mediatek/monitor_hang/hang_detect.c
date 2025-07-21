@@ -73,34 +73,21 @@ static struct task_struct **thread_array;
 static bool Hang_first_done;
 static bool hd_detect_enabled;
 static bool hd_zygote_stopped;
-static bool hd_hang_trace;
-static bool hd_hang_poll;
 static int hd_timeout = 0x7fffffff;
 static int hang_detect_counter = 0x7fffffff;
 static int dump_bt_done;
 static bool reboot_flag;
 static struct name_list *white_list;
+static struct hang_callback_list *callback_list;
 
 #ifdef CONFIG_MTK_HANG_PROC
 static struct proc_dir_entry *pe;
 #endif
 
-struct hang_callback {
-	struct list_head hc_entry;
-	void (*fn)(void);
-};
-
-struct list_hang_callback {
-	struct list_head list;
-	struct rw_semaphore rwsem;
-};
-static struct list_hang_callback hc_list;
-
-wait_queue_head_t hang_wait;
-
 DECLARE_WAIT_QUEUE_HEAD(dump_bt_start_wait);
 DECLARE_WAIT_QUEUE_HEAD(dump_bt_done_wait);
 DEFINE_RAW_SPINLOCK(white_list_lock);
+DEFINE_RAW_SPINLOCK(callback_list_lock);
 DEFINE_MUTEX(thread_array_lock);
 
 static void show_status(int flag);
@@ -283,39 +270,38 @@ int del_white_list(char *name)
 
 int register_hang_callback(void (*function_addr)(void))
 {
-	struct hang_callback *new_callback;
+	struct hang_callback_list *new_callback;
+	struct hang_callback_list *pList;
 
-	new_callback = kzalloc(sizeof(struct hang_callback), GFP_KERNEL);
-	if (!new_callback)
+	raw_spin_lock(&callback_list_lock);
+	if (!callback_list) {
+		new_callback = kmalloc(sizeof(struct hang_callback_list), GFP_KERNEL);
+		if (!new_callback) {
+			raw_spin_unlock(&callback_list_lock);
+			return -1;
+		}
+		new_callback->fn = function_addr;
+		new_callback->next = NULL;
+		callback_list = new_callback;
+		raw_spin_unlock(&callback_list_lock);
+		return 0;
+	}
+
+	pList = callback_list;
+	/*add new thread name*/
+	new_callback = kmalloc(sizeof(struct hang_callback_list), GFP_KERNEL);
+	if (!new_callback) {
+		raw_spin_unlock(&callback_list_lock);
 		return -1;
+	}
 
 	new_callback->fn = function_addr;
-
-	down_write(&hc_list.rwsem);
-	list_add_tail(&new_callback->hc_entry, &hc_list.list);
-	up_write(&hc_list.rwsem);
-
+	new_callback->next = callback_list;
+	callback_list = new_callback;
+	raw_spin_unlock(&callback_list_lock);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(register_hang_callback);
-
-int unregister_hang_callback(void (*function_addr)(void))
-{
-	struct hang_callback *hc_cb, *n;
-
-	down_write(&hc_list.rwsem);
-	list_for_each_entry_safe(hc_cb, n, &hc_list.list, hc_entry) {
-		if (hc_cb->fn == function_addr) {
-			list_del(&hc_cb->hc_entry);
-			kfree(hc_cb);
-			break;
-		}
-	}
-	up_write(&hc_list.rwsem);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(unregister_hang_callback);
 
 #ifdef CONFIG_MTK_HANG_PROC
 #define SEQ_printf(m, x...) \
@@ -555,15 +541,7 @@ static int monitor_hang_release(struct inode *inode, struct file *filp)
 static unsigned int monitor_hang_poll(struct file *file,
 		struct poll_table_struct *ptable)
 {
-	unsigned int mask = 0;
-
-	hd_hang_poll = true;
-	poll_wait(file, &hang_wait, ptable);
-	if ((hd_detect_enabled == 1) && (hd_hang_trace == true)) {
-		mask |= POLLIN;
-		hd_hang_trace = false;
-	}
-	return mask;
+	return 0;
 }
 
 static ssize_t monitor_hang_read(struct file *filp, char __user *buf,
@@ -932,7 +910,7 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 	int mapcount = 0;
 	struct file *file;
 	int flags;
-	struct mm_struct *mm, *current_mm;
+	struct mm_struct *mm;
 	struct pt_regs *user_ret;
 	char tpath[512];
 	char *path_p = NULL;
@@ -949,18 +927,17 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 		return -1;
 	}
 
-	current_mm = get_task_mm(current_task);
-	if (!current_mm) {
+	if (!get_task_mm(current_task)) {
 		pr_info(" %s,%d:%s: current_task->mm == NULL", __func__, pid,
 				current_task->comm);
 		return -1;
 	}
 
-	mmap_read_lock(current_mm);
-	vma = current_mm->mmap;
+	mmap_read_lock(current_task->mm);
+	vma = current_task->mm->mmap;
 	log_hang_info("Dump native maps files:\n");
 	hang_log("Dump native maps files:\n");
-	while (vma && (mapcount < current_mm->map_count)) {
+	while (vma && (mapcount < current_task->mm->map_count)) {
 		file = vma->vm_file;
 		flags = vma->vm_flags;
 		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
@@ -1024,8 +1001,8 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 		vma = vma->vm_next;
 		mapcount++;
 	}
-	mmap_read_unlock(current_mm);
-	mmput(current_mm);
+	mmap_read_unlock(current_task->mm);
+	mmput(current_task->mm);
 	return 0;
 }
 
@@ -1036,7 +1013,6 @@ static int dump_native_info_by_tid(pid_t tid,
 	struct vm_area_struct *vma;
 	unsigned long userstack_start = 0;
 	unsigned long userstack_end = 0, length = 0;
-	struct mm_struct *current_mm;
 	int ret = -1;
 
 	if (!current_task)
@@ -1049,14 +1025,13 @@ static int dump_native_info_by_tid(pid_t tid,
 		return ret;
 	}
 
-	current_mm = get_task_mm(current_task);
-	if (!current_mm) {
+	if (!get_task_mm(current_task)) {
 		pr_info(" %s,%d:%s, current_task->mm == NULL", __func__, tid,
 				current_task->comm);
 		return ret;
 	}
 
-	mmap_read_lock(current_mm);
+	mmap_read_lock(current_task->mm);
 #ifndef __aarch64__		/* 32bit */
 	log_hang_info(" pc/lr/sp 0x%08x/0x%08x/0x%08x\n", user_ret->ARM_pc,
 			user_ret->ARM_lr, user_ret->ARM_sp);
@@ -1084,7 +1059,7 @@ static int dump_native_info_by_tid(pid_t tid,
 		(long)(user_ret->ARM_r1), (long)(user_ret->ARM_r0));
 
 	userstack_start = (unsigned long)user_ret->ARM_sp;
-	vma = current_mm->mmap;
+	vma = current_task->mm->mmap;
 	while (vma) {
 		if (vma->vm_start <= userstack_start &&
 			vma->vm_end >= userstack_start) {
@@ -1092,12 +1067,12 @@ static int dump_native_info_by_tid(pid_t tid,
 			break;
 		}
 		vma = vma->vm_next;
-		if (vma == current_mm->mmap)
+		if (vma == current_task->mm->mmap)
 			break;
 	}
 
 #if !IS_ENABLED(CONFIG_MTK_HANG_PROC)
-	mmap_read_unlock(current_mm);
+	mmap_read_unlock(current_task->mm);
 #endif
 
 	if (!userstack_end) {
@@ -1196,7 +1171,7 @@ static int dump_native_info_by_tid(pid_t tid,
 			(long)(user_ret->user_regs.regs[1]),
 			(long)(user_ret->user_regs.regs[0]));
 		userstack_start = (unsigned long)user_ret->user_regs.regs[13];
-		vma = current_mm->mmap;
+		vma = current_task->mm->mmap;
 		while (vma) {
 			if (vma->vm_start <= userstack_start &&
 				vma->vm_end >= userstack_start) {
@@ -1204,12 +1179,12 @@ static int dump_native_info_by_tid(pid_t tid,
 				break;
 			}
 			vma = vma->vm_next;
-			if (vma == current_mm->mmap)
+			if (vma == current_task->mm->mmap)
 				break;
 		}
 
 #if !IS_ENABLED(CONFIG_MTK_HANG_PROC)
-		mmap_read_unlock(current_mm);
+		mmap_read_unlock(current_task->mm);
 #endif
 
 		if (!userstack_end) {
@@ -1267,7 +1242,7 @@ static int dump_native_info_by_tid(pid_t tid,
 		}
 	} else {		/*K64+U64 */
 		userstack_start = (unsigned long)user_ret->user_regs.sp;
-		vma = current_mm->mmap;
+		vma = current_task->mm->mmap;
 		while (vma) {
 			if (vma->vm_start <= userstack_start &&
 					vma->vm_end >= userstack_start) {
@@ -1275,12 +1250,12 @@ static int dump_native_info_by_tid(pid_t tid,
 				break;
 			}
 			vma = vma->vm_next;
-			if (vma == current_mm->mmap)
+			if (vma == current_task->mm->mmap)
 				break;
 		}
 
 #if !IS_ENABLED(CONFIG_MTK_HANG_PROC)
-		mmap_read_unlock(current_mm);
+		mmap_read_unlock(current_task->mm);
 #endif
 
 		if (!userstack_end) {
@@ -1352,9 +1327,9 @@ static int dump_native_info_by_tid(pid_t tid,
 	ret = 0;
 err:
 #if IS_ENABLED(CONFIG_MTK_HANG_PROC)
-	mmap_read_unlock(current_mm);
+	mmap_read_unlock(current_task->mm);
 #endif
-	mmput(current_mm);
+	mmput(current_task->mm);
 	return ret;
 
 }
@@ -1502,14 +1477,19 @@ static int is_in_white_list(struct task_struct *p)
 
 static int run_callback(void)
 {
-	struct hang_callback *hc_cb, *n;
+	struct hang_callback_list *pList = NULL;
 
-	down_read(&hc_list.rwsem);
-	list_for_each_entry_safe(hc_cb, n, &hc_list.list, hc_entry)
-		hc_cb->fn();
-	up_read(&hc_list.rwsem);
+	if (!callback_list)
+		return -1;
 
-	return 0;
+	raw_spin_lock(&callback_list_lock);
+	pList = callback_list;
+	while (pList) {
+		pList->fn();
+		pList = pList->next;
+	}
+	raw_spin_unlock(&callback_list_lock);
+	return -1;
 }
 
 static void show_task_info(void)
@@ -1526,6 +1506,7 @@ static void show_task_backtrace(void)
 {
 	struct task_struct *p, *system_server_task = NULL;
 	struct task_struct *monkey_task = NULL;
+	struct task_struct *aee_aed_task = NULL;
 	struct task_info task_info_arr[MAX_NR_SPECIAL_PROCESS];
 	int i = 0;
 	unsigned int task_array_idx = 0;
@@ -1558,6 +1539,8 @@ static void show_task_backtrace(void)
 				system_server_task = p;
 			if (strstr(p->comm, "monkey"))
 				monkey_task = p;
+			if (!strcmp(p->comm, "aee_aed"))
+				aee_aed_task = p;
 		}
 		/* specify process, need dump maps file and native backtrace */
 		if (!first_dump_blocked && (task_array_idx < MAX_NR_SPECIAL_PROCESS)) {
@@ -1605,6 +1588,8 @@ static void show_task_backtrace(void)
 	}
 	log_hang_info("dump backtrace end: %llu\n", local_clock());
 	if (Hang_first_done == false) {
+		if (aee_aed_task)
+			send_sig(SIGUSR1, aee_aed_task, 1);
 		if (system_server_task)
 			send_sig(SIGQUIT, system_server_task, 1);
 		if (monkey_task)
@@ -1732,10 +1717,6 @@ static int hang_detect_thread(void *arg)
 		if (hd_detect_enabled && check_white_list())
 #endif
 		{
-			if (hd_hang_poll && (hang_detect_counter == 2)) {
-				hd_hang_trace = true;
-				wake_up(&hang_wait);
-			}
 
 			if (hang_detect_counter <= 0) {
 				log_hang_info(
@@ -1855,17 +1836,11 @@ static int __init monitor_hang_init(void)
 	if (thread_array == NULL)
 		return 1;
 
-	init_waitqueue_head(&hang_wait);
-
 	err = misc_register(&Hang_Monitor_dev);
 	if (unlikely(err)) {
 		pr_notice("failed to register Hang_Monitor_dev device!\n");
 		return err;
 	}
-
-	init_rwsem(&hc_list.rwsem);
-	INIT_LIST_HEAD(&hc_list.list);
-
 	hang_detect_init();
 	mrdump_regist_hang_bt(show_task_info);
 

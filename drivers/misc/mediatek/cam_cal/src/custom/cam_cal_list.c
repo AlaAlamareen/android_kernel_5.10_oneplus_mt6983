@@ -60,8 +60,6 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	/*Cam.Drv add for Doki otp BringUp 20220523*/
 	{S5KJN1_SENSOR_ID_DOKI, 0xA0, Common_read_region},
 	{OV16A1Q_SENSOR_ID_DOKI, 0xA8, Common_read_region},
-	{S5KHM6SP_SENSOR_ID_DOKI, 0xA0, Common_read_region},
-	{OV16A1Q_SENSOR_ID_ADOKI, 0xA8, Common_read_region},
 	#ifdef SUPPORT_S5K4H7
 	{S5K4H7FRONT_SENSOR_ID, 0x20, s5k4h7_read_otpdata},
 	#endif
@@ -70,24 +68,6 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	{GC02M1_SENSOR_ID_CHANGZHENG, 0xA4, Common_read_region},
 	{OVA0B4_SENSOR_ID_CHANGZHENG, 0xA0, Common_read_region},
 	{S5KHM6S_SENSOR_ID_CHANGZHENG, 0xA0, Common_read_region},
-	/*24267*/
-	{OV50D40_SENSOR_ID_24267, 0xA0, Common_read_region},
-	{GC32E2_SENSOR_ID_24267, 0xA8, Common_read_region},
-	{OV08D10_SENSOR_ID_24267, 0xA2, Common_read_region},
-	{OV02B10_SENSOR_ID_24267, 0xA4, Common_read_region},
-	/*sonic start*/
-	{HI846_SENSOR_ID_SONIC, 0X46, Hi846_read_region},
-	{HI556_SENSOR_ID_SONIC, 0X40, Hi556_read_region},
-	/*sonic end*/
-	/*bluey*/
-	{HI846_SENSOR_ID_MAIN_BLUEY, 0xA0, Common_read_region},
-	{GC08A3_SENSOR_ID_BLUEY, 0xB0, Common_read_region},
-	{HI846SUB_SENSOR_ID_FRONT_BLUEY, 0xA8, Common_read_region},
-	{SC820CS_SENSOR_ID_BLUEY, 0xA0, Common_read_region},
-	/*sonic-s start*/
-	{HI846_SENSOR_ID_24695, 0X46, Hi846_read_region},
-	{HI556_SENSOR_ID_24695, 0X40, Hi556_read_region},
-	/*sonic-s end*/
 	/*  ADD before this line */
 	{0, 0, 0}       /*end of list */
 };

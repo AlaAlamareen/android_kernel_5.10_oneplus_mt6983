@@ -64,9 +64,6 @@ struct sugov_policy {
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 	unsigned int	flags;
 #endif
-#if IS_ENABLED(CONFIG_OPLUS_CPUFREQ_IOWAIT_PROTECT)
-	u64			last_update;
-#endif
 };
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)

@@ -45,15 +45,59 @@
 #include "../mediatek/mediatek_v2/mtk_corner_pattern/data_hw_roundedpattern_r_tianma_linhai.h"
 /* add for dips_drv log  */
 #include "../oplus/oplus_display_mtk_debug.h"
-#include "oplus22017_tianma_ili7838a_fhd_dsi_cmd.h"
 
+#define REGFLAG_CMD       0xFFFA
+#define REGFLAG_DELAY       0xFFFC
+#define REGFLAG_UDELAY  0xFFFB
+#define REGFLAG_END_OF_TABLE    0xFFFD
+
+#define BRIGHTNESS_MAX    4095
+#define BRIGHTNESS_HALF   2047
+#define MAX_NORMAL_BRIGHTNESS   3515
+#define LCM_BRIGHTNESS_TYPE 2
 static unsigned int esd_brightness = 1023;
 extern unsigned int oplus_display_brightness;
-extern unsigned int last_backlight;
 static bool aod_state = false;
 
 extern void lcdinfo_notify(unsigned long val, void *v);
 extern unsigned int oplus_enhance_mipi_strength;
+struct LCM_setting_table {
+  	unsigned int cmd;
+ 	unsigned char count;
+ 	unsigned char para_list[128];
+};
+
+static struct LCM_setting_table lcm_setbrightness_normal[] = {
+	{REGFLAG_CMD,3, {0x51, 0x00, 0x00}},
+};
+
+static struct LCM_setting_table lcm_finger_HBM_on_setting[] = {
+    {REGFLAG_CMD,3, {0x51, 0x0f, 0xff}},
+};
+
+static struct LCM_setting_table lcm_aod_to_normal[] = {
+	{REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x00}},
+	{REGFLAG_CMD,1, {0x38}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+static struct LCM_setting_table lcm_aod_high_mode[] = {
+	{REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x00}},
+	{REGFLAG_CMD,1, {0x39}},
+	{REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x0C}},
+	{REGFLAG_CMD,2, {0xBE, 0x01}},
+	{REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x00}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
+
+static struct LCM_setting_table lcm_aod_low_mode[] = {
+    {REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x00}},
+    {REGFLAG_CMD,1, {0x39}},
+    {REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x0C}},
+    {REGFLAG_CMD,2, {0xBE, 0x00}},
+	{REGFLAG_CMD,4, {0xFF, 0x78, 0x38, 0x00}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
+};
 
 struct lcm_pmic_info {
 	struct regulator *reg_vufs18;
@@ -71,7 +115,6 @@ struct lcm {
 	struct gpio_desc *vddr_aod_enable_gpio;
 	struct gpio_desc *vci_enable_gpio;
 	struct gpio_desc *te_switch_gpio,*te_out_gpio;
-	struct drm_display_mode *m;
 	bool prepared;
 	bool enabled;
 	int error;
@@ -216,75 +259,53 @@ static int lcm_panel_vufs_ldo_disable(struct device *dev)
 	return ret;
 }
 #endif
-
-static void push_table(struct lcm *ctx, struct LCM_setting_table *table,
-		unsigned int count)
-{
-	unsigned int i;
-	unsigned int cmd;
-
-	for (i = 0; i < count; i++) {
-		cmd = table[i].cmd;
-		switch (cmd) {
-		case REGFLAG_DELAY:
-			usleep_range(table[i].count * 1000, table[i].count * 1000 + 100);
-			break;
-		case REGFLAG_UDELAY:
-			usleep_range(table[i].count, table[i].count + 1000);
-			break;
-		case REGFLAG_END_OF_TABLE:
-			break;
-		default:
-			lcm_dcs_write(ctx, table[i].para_list,
-				table[i].count);
-			break;
-		}
-	}
-}
-static int get_mode_enum(struct drm_display_mode *m)
-{
-	int ret = -1;
-	int m_vrefresh = 0;
-
-	if (m == NULL) {
-		return -EINVAL;
-	}
-
-	m_vrefresh = drm_mode_vrefresh(m);
-
-	if (m_vrefresh == 60) {
-		ret = FHD_SDC60;
-	} else if (m_vrefresh == 90) {
-		ret = FHD_SDC90;
-	} else if (m_vrefresh == 120) {
-		ret = FHD_SDC120;
-	}
-	return ret;
-}
-
 static void lcm_panel_init(struct lcm *ctx)
 {
-	int mode_id = -1;
-	struct drm_display_mode *m = ctx->m;
+	DISP_INFO(" +\n");
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x0B);
+	lcm_dcs_write_seq_static(ctx,0x17,0xF3);
+	lcm_dcs_write_seq_static(ctx,0x18,0xF3);
+	lcm_dcs_write_seq_static(ctx,0x19,0xF3);
+	lcm_dcs_write_seq_static(ctx,0x1A,0xF3);
+	lcm_dcs_write_seq_static(ctx,0x1B,0xF3);
+	lcm_dcs_write_seq_static(ctx,0x1C,0xF3);
+	lcm_dcs_write_seq_static(ctx,0x1D,0xF3);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x0A);
+	lcm_dcs_write_seq_static(ctx,0x37,0x4F);
+	lcm_dcs_write_seq_static(ctx,0x38,0x70);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x00);
+	lcm_dcs_write_seq_static(ctx,0x55,0x03);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x08);
+	lcm_dcs_write_seq_static(ctx,0x45,0x4C);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x02);
+	lcm_dcs_write_seq_static(ctx,0x38,0x13);   //60Hz
+	lcm_dcs_write_seq_static(ctx, 0xFF,0x78,0x38,0x17);
+	lcm_dcs_write_seq_static(ctx, 0x20,0x00);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x07);
+	lcm_dcs_write_seq_static(ctx,0x29,0x01);
+	lcm_dcs_write_seq_static(ctx,0x20,0x00,0x00,0x00,0x00,0x00,0x11,0x00,0x00,0xab,0x30,0xA0,0x09,0x6c,0x04,0x38,0x00,0x0c,0x02,0x1c,
+	0x02,0xa3,0x01,0x9a,0x01,0xd8,0x00,0x19,0x01,0x03,0x00,0x0a,0x00,0x0c,0x08,0xbb,0x0a,0x5f,0x16,0x00,0x10,0xec,0x07,0x10,0x20,0x00,
+	0x06,0x0f,0x0f,0x33,0x0e,0x1c,0x2a,0x38,0x46,0x54,0x62,0x69,0x70,0x77,0x79,0x7b,0x7d,0x7e,0x01,0xc2,0x22,0x00,0x2a,0x40,0x32,0xbe,
+	0x3a,0xfc,0x3a,0xfa,0x3a,0xf8,0x3b,0x38,0x3b,0x78,0x3b,0x76,0x4b,0xb6,0x4b,0xb6,0x4b,0xf4,0x5b,0xf4,0x7c,0x34,0x00,0x00,0x00,0x00,
+	0x00,0x00);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x06);
+	lcm_dcs_write_seq_static(ctx,0x99,0x00);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x00);
+	lcm_dcs_write_seq_static(ctx,0x95,0x10);
+	lcm_dcs_write_seq_static(ctx,0x51,0x00,0x00);
+	lcm_dcs_write_seq_static(ctx,0x53,0x20);
+	lcm_dcs_write_seq_static(ctx,0x35,0x00);
+	lcm_dcs_write_seq_static(ctx,0x11,0x00);
+	usleep_range(120000, 125100);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x08);
+	lcm_dcs_write_seq_static(ctx,0x57,0x25);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x06);
+	lcm_dcs_write_seq_static(ctx,0xC6,0x01);
+	lcm_dcs_write_seq_static(ctx,0xFF,0x78,0x38,0x00);
+	lcm_dcs_write_seq_static(ctx,0x29,0x00);
+	usleep_range(70000, 75100);
+	DISP_INFO(" -\n");
 
-	mode_id = get_mode_enum(m);
-	DISP_INFO("mode_id=%d\n", mode_id);
-	switch (mode_id) {
-	case FHD_SDC60:
-		push_table(ctx, dsi_on_cmd_sdc60, sizeof(dsi_on_cmd_sdc60)/sizeof(struct LCM_setting_table));
-		break;
-	case FHD_SDC90:
-		push_table(ctx, dsi_on_cmd_sdc90, sizeof(dsi_on_cmd_sdc90)/sizeof(struct LCM_setting_table));
-		break;
-	case FHD_SDC120:
-		push_table(ctx, dsi_on_cmd_sdc120, sizeof(dsi_on_cmd_sdc120)/sizeof(struct LCM_setting_table));
-		break;
-	default:
-		push_table(ctx, dsi_on_cmd_sdc120, sizeof(dsi_on_cmd_sdc120)/sizeof(struct LCM_setting_table));
-		break;
-	}
-
-	DISP_INFO("Successful\n");
 }
 
 static int lcm_disable(struct drm_panel *panel)
@@ -491,7 +512,6 @@ static struct mtk_panel_params ext_params = {
 		},
 	.data_rate = 836,
 	.oplus_serial_para0 = 0xA3,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 67,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -501,7 +521,6 @@ static struct mtk_panel_params ext_params = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 60,
         },
-	.panel_bpp = 10,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -581,7 +600,6 @@ static struct mtk_panel_params ext_params_90hz = {
 		},
 	.data_rate = 836,
 	.oplus_serial_para0 = 0xA3,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 56,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -591,7 +609,6 @@ static struct mtk_panel_params ext_params_90hz = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 90,
         },
-	.panel_bpp = 10,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -673,7 +690,6 @@ static struct mtk_panel_params ext_params_120hz = {
 		},
 	.data_rate = 978,
 	.oplus_serial_para0 = 0xA3,
-	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 50,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -683,7 +699,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	.dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 120,
         },
-	.panel_bpp = 10,
 };
 
 static int panel_ata_check(struct drm_panel *panel)
@@ -859,7 +874,6 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	aod_state = false;
 	/* keep vcore off */
 	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_SUSPEND_PWR_CTRL, MT_LPM_SMC_ACT_SET, PW_REG_SPM_VCORE_REQ, 0x0);
-	lcm_setbacklight_cmdq(dsi, cb, handle, last_backlight);
 	DISP_DEBUG(" call lpm_smc_spm_dbg keep vcore off for exit AOD!\n");
 	DISP_DEBUG("success\n");
 
@@ -930,77 +944,6 @@ static int panel_set_aod_light_mode(void *dsi, dcs_write_gce cb, void *handle, u
 	DISP_DEBUG(" success %d !\n" ,level);
 
 	return 0;
-}
-static int oplus_lcm_dcs_read(struct lcm *ctx, u8 cmd, void *data, size_t len)
-{
-	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-	ssize_t ret;
-
-	if (ctx->error < 0)
-		return 0;
-
-	ret = mipi_dsi_dcs_read(dsi, cmd, data, len);
-	if (ret < 0) {
-		DISP_ERR("error %ld reading dcs seq:(%#x)\n", ret, cmd);
-		ctx->error = ret;
-	}
-
-	return ret;
-}
-
-static void oplus_lcm_panel_get_data(struct lcm *ctx)
-{
-	u8 buffer[3] = { 0 };
-	static int ret;
-
-	ret = oplus_lcm_dcs_read(ctx, 0x0A, buffer, 1);
-	DISP_INFO("0x0A return %d data(0x%08x) to dsi engine\n",ret, buffer[0] | (buffer[1] << 8));
-	ret = oplus_lcm_dcs_read(ctx, 0x0E, buffer, 1);
-	DISP_INFO("return 0x0E %d data(0x%08x) to dsi engine\n",ret, buffer[0] | (buffer[1] << 8));
-
-}
-
-void lcm_read_info(struct drm_panel *panel, int read_ic)
-{
-	unsigned int ret = 0;
-	struct lcm *ctx = panel_to_lcm(panel);
-	/* VCI LDO GPIO enable */
-	if (IS_ERR(ctx->vci_enable_gpio))
-		DISP_ERR("get vci enable gpio failed\n");
-	else {
-		ret = gpiod_get_value(ctx->vci_enable_gpio);
-		DISP_INFO("vci_enable_gpio = %d\n", ret);
-	}
-
-	/* vcore 1p2 GPIO enable */
-	if (IS_ERR(ctx->vddr_aod_enable_gpio))
-		DISP_ERR("get vddr_aod gpio failed\n");
-	else {
-		ret = gpiod_get_value(ctx->vddr_aod_enable_gpio);
-		DISP_INFO("vddr_aod_gpio = %d\n", ret);
-	}
-
-	/* vddr1p5 GPIO enable */
-	if (IS_ERR(ctx->vddr1p5_enable_gpio))
-		DISP_ERR("get vddr1p5 gpio failed\n");
-	else {
-		ret = gpiod_get_value(ctx->vddr1p5_enable_gpio);
-		DISP_INFO("vddr1p5_gpio = %d\n", ret);
-	}
-
-	/* Reset GPIO enable */
-	if (IS_ERR(ctx->reset_gpio))
-		DISP_ERR("get reset gpio failed\n");
-	else {
-		ret = gpiod_get_value(ctx->reset_gpio);
-		DISP_INFO("reset_gpio = %d\n", ret);
-	}
-	pr_info("read_ic = %d\n", read_ic);
-	/* DDIC register detect */
-	if (read_ic > 0) {
-		oplus_lcm_panel_get_data(ctx);
-	}
-	return;
 }
 
 static int lcm_panel_poweron(struct drm_panel *panel)
@@ -1084,10 +1027,6 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-	if (!m) {
-		pr_err("%s invalid drm_display_mode\n", __func__);
-		return 1;
-	}
 
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
@@ -1146,16 +1085,7 @@ static int mode_switch(struct drm_panel *panel,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
 {
 	int ret = 0;
-	struct lcm *ctx = NULL;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
-	if (!m) {
-		pr_err("invalid drm_display_mode\n");
-		return 1;
-	}
-
-	if (panel) {
-		ctx = panel_to_lcm(panel);
-	}
 
 	DISP_INFO("cur_mode = %d dst_mode %d\n", cur_mode, dst_mode);
 
@@ -1167,10 +1097,6 @@ static int mode_switch(struct drm_panel *panel,
 		mode_switch_to_120(panel, stage);
 	} else
 		ret = 1;
-
-	if (ctx) {
-		ctx->m = m;
-	}
 
 	return ret;
 }
@@ -1197,7 +1123,6 @@ static struct mtk_panel_funcs ext_funcs = {
 	.esd_backlight_recovery = oplus_esd_backlight_recovery,
 	.hbm_set_cmdq = panel_hbm_set_cmdq,
 	.set_hbm = lcm_set_hbm,
-	.oplus_get_info = lcm_read_info,
 	.doze_enable = panel_doze_enable,
 	.doze_disable = panel_doze_disable,
 	.set_aod_light_mode = panel_set_aod_light_mode,

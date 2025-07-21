@@ -192,7 +192,7 @@ static const struct aal_data mt6879_aal_data = {
 
 static const struct aal_data mt6895_aal0_data = {
 	.min_tile_width = 50,
-	.tile_width = 1216,
+	.tile_width = 1300,
 	.min_hist_width = 128,
 	.vcp_readback = false,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
@@ -1200,8 +1200,6 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 	if (vcp) {
 		mml_pq_put_vcp_buf_offset(task, engine, task->pq_task->aal_hist[pipe]);
 		cmdq_vcp_enable(false);
-		kfree(task->pq_task->aal_hist[pipe]);
-		task->pq_task->aal_hist[pipe] = NULL;
 	} else
 		mml_pq_put_readback_buffer(task, pipe, task->pq_task->aal_hist[pipe]);
 exit:

@@ -144,9 +144,7 @@ enum {
 	/*TCP_NOTIFY_MISC_END = TCP_NOTIFY_CABLE_TYPE,*/
 	TCP_NOTIFY_WD0_STATE,
 	TCP_NOTIFY_CHRDET_STATE,
-	TCP_NOTIFY_SWITCH_GET_STATE,
-	TCP_NOTIFY_SWITCH_SET_STATE,
-	TCP_NOTIFY_MISC_END = TCP_NOTIFY_SWITCH_SET_STATE,
+	TCP_NOTIFY_MISC_END = TCP_NOTIFY_CHRDET_STATE,
 /*#endif*/
 };
 
@@ -332,20 +330,6 @@ struct tcp_ny_wd0_state {
 struct tcp_ny_chrdet_state {
 	bool chrdet;
 };
-
-struct tcp_ny_switch_set_status {
-	bool	 state;		/* 0: DP/DM state;  1: fastchg state */
-	bool 	(*pfunc)(int);	/* recevier call the pfunc to ack.*/
-};
-
-struct tcp_ny_switch_get_status {
-	bool	(*pfunc)(int);  /*recevier call the pfunc to ack.
-				* 0: default DP/DM state
-				* 1: fastchg state
-				* 2: audio state
-				* 3: unknow state
-				*/
-};
 #endif
 
 struct tcp_notify {
@@ -371,8 +355,6 @@ struct tcp_notify {
 #ifdef OPLUS_FEATURE_CHG_BASIC
 		struct tcp_ny_wd0_state wd0_state;
 		struct tcp_ny_chrdet_state chrdet_state;
-		struct tcp_ny_switch_set_status switch_set_status;
-		struct tcp_ny_switch_get_status switch_get_status;
 #endif
 	};
 };

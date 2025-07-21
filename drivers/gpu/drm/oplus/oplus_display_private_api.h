@@ -32,7 +32,7 @@
 #include <drm/drm_mipi_dsi.h>
 #include <video/videomode.h>
 
-#include "mtk_drm_drv.h"
+//#include "mtk_drm_drv.h"
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp.h"
 #include "mtk_drm_ddp_comp.h"
@@ -50,7 +50,7 @@
 #include "mtk_drm_lowpower.h"
 //#include "mtk_drm_fbdev.h"
 #include "mtk_drm_assert.h"
-#include "mtk_drm_mmp.h"
+//#include "mtk_drm_mmp.h"
 #include "mtk_disp_recovery.h"
 #include "mtk_drm_arr.h"
 #include "mtk_log.h"
@@ -60,31 +60,13 @@
 #define OPLUS_NORMAL_MAX_BRIGHTNESS 2047
 #define OPLUS_MIN_BRIGHTNESS 0
 
-/**
- * enum oplus_debug_log --       flags to control debug log; 1->enbale  0->disable
- * @OPLUS_DEBUG_LOG_DISABLED:    disable all debug log
- * @OPLUS_DEBUG_LOG_CMD:         dump register log
- * @OPLUS_DEBUG_LOG_BACKLIGHT:   backlight log
- * @OPLUS_DEBUG_LOG_COMMON:      common log
- * @OPLUS_DEBUG_LOG_OFP:         OFP log
- * @OPLUS_DEBUG_LOG_ADFR:        ADFR log
- * @OPLUS_DEBUG_LOG_TEMP_COMPENSATION:temp compensation log
- */
 enum oplus_debug_log {
 	OPLUS_DEBUG_LOG_DISABLED = 0,
 	OPLUS_DEBUG_LOG_CMD = BIT(0),
 	OPLUS_DEBUG_LOG_BACKLIGHT = BIT(1),
-	OPLUS_DEBUG_LOG_COMMON = BIT(2),
 	OPLUS_DEBUG_LOG_OFP = BIT(3),
 	OPLUS_DEBUG_LOG_ADFR = BIT(4),
-	OPLUS_DEBUG_LOG_TEMP_COMPENSATION = BIT(6),
-};
-
-enum oplus_display_trace_enable {
-	OPLUS_DISPLAY_DISABLE_TRACE = 0,
-	OPLUS_DISPLAY_OFP_TRACE_ENABLE = BIT(0),
-	OPLUS_DISPLAY_ADFR_TRACE_ENABLE = BIT(1),
-	OPLUS_DISPLAY_TEMP_COMPENSATION_TRACE_ENABLE = BIT(3),
+	OPLUS_DEBUG_LOG_TEMP_COMPENSATION = BIT(5),
 };
 
 /* aod_area begin */

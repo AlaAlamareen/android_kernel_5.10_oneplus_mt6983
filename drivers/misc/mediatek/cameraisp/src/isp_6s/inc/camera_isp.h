@@ -8,13 +8,6 @@
 
 #include <linux/ioctl.h>
 
-#ifndef OPLUS_FEATURE_CAMERA_COMMON
-#define OPLUS_FEATURE_CAMERA_COMMON
-#endif
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-#include <soc/oplus/system/oplus_project.h>
-#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 /**
  * boot-T timestamp is supported or not.
  * undef: not supported
@@ -702,10 +695,7 @@ enum ISP_CMD_ENUM {
 	ISP_CMD_ION_UNMAP_PA_BY_MODULE,
 	ISP_CMD_ION_GET_PA,
 	ISP_CMD_SET_VIR_CQCNT,
-	ISP_CMD_POWER_CTRL,
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	ISP_CMD_MASK_NEXT_SOF
-#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
+	ISP_CMD_POWER_CTRL
 };
 
 enum ISP_HALT_DMA_ENUM {
@@ -799,11 +789,6 @@ enum ISP_HALT_DMA_ENUM {
 
 #define ISP_POWER_CTRL                            \
 	_IOWR(ISP_MAGIC, ISP_CMD_POWER_CTRL, unsigned int*)
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-#define ISP_MASK_NEXT_SOF \
-	_IOW(ISP_MAGIC, ISP_CMD_MASK_NEXT_SOF, unsigned int*)
-#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 #define ISP_SET_PM_QOS                           \
 	_IOWR(ISP_MAGIC, ISP_CMD_SET_PM_QOS, unsigned int)
@@ -927,11 +912,6 @@ enum ISP_HALT_DMA_ENUM {
 
 #define COMPAT_ISP_POWER_CTRL                 \
 	_IOWR(ISP_MAGIC, ISP_CMD_POWER_CTRL, compat_uptr_t)
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-#define COMPAT_ISP_MASK_NEXT_SOF                 \
-	_IOWR(ISP_MAGIC, ISP_CMD_MASK_NEXT_SOF, compat_uptr_t)
-#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 #define COMPAT_ISP_DUMP_BUFFER                   \
 	_IOWR(ISP_MAGIC,                         \

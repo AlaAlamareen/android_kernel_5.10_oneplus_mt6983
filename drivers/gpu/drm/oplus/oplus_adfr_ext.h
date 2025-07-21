@@ -17,11 +17,10 @@
 #include <drm/drm_modes.h>
 
 enum oplus_adfr_log_level {
-	OPLUS_ADFR_LOG_LEVEL_NONE = 0,
-	OPLUS_ADFR_LOG_LEVEL_ERR = 1,
-	OPLUS_ADFR_LOG_LEVEL_WARN = 2,
-	OPLUS_ADFR_LOG_LEVEL_INFO = 3,
-	OPLUS_ADFR_LOG_LEVEL_DEBUG = 4,
+	OPLUS_ADFR_LOG_LEVEL_ERR = 0,
+	OPLUS_ADFR_LOG_LEVEL_WARN = 1,
+	OPLUS_ADFR_LOG_LEVEL_INFO = 2,
+	OPLUS_ADFR_LOG_LEVEL_DEBUG = 3,
 };
 
 enum oplus_adfr_display_id {

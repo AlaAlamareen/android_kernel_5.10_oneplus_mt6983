@@ -61,8 +61,6 @@
 #define IMX766DUAL_EEPROM_READ_ID  0xA2
 #define IMX766DUAL_EEPROM_WRITE_ID 0xA3
 
-#define VHDR_CUST_PIXEL_RATE 500000000
-
 #define _I2C_BUF_SIZE 256
 static kal_uint16 _i2c_data[_I2C_BUF_SIZE];
 static unsigned int _size_to_write;
@@ -1433,7 +1431,7 @@ static void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	}
 
 	set_cmos_sensor_8(ctx, 0x0104, 0x01);
-	set_cmos_sensor_8(ctx, 0x3128, read_cmos_sensor_16(ctx, 0x3128) & 0xf8);
+
 	if (!set_auto_flicker(ctx))
 		write_frame_len(ctx, ctx->frame_length);
 	/* Long exposure */
@@ -4298,16 +4296,6 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 		set_multi_shutter_frame_length(ctx, (UINT32 *)(*feature_data),
 					(UINT16) (*(feature_data + 1)),
 					(UINT16) (*(feature_data + 2)));
-		break;
-	case SENSOR_FEATURE_GET_CUST_PIXEL_RATE:
-		LOG_INF("SENSOR_FEATURE_GET_CUST_PIXEL_RATE setting = %d", *feature_data);
-		switch (*feature_data) {
-			case SENSOR_SCENARIO_ID_CUSTOM1:
-				*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = VHDR_CUST_PIXEL_RATE;
-				break;
-			default:
-				break;
-		}
 		break;
 	default:
 		break;

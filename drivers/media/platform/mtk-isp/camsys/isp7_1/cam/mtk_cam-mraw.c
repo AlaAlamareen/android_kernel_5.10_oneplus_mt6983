@@ -1223,9 +1223,13 @@ int mtk_cam_mraw_apply_all_buffers(struct mtk_cam_ctx *ctx, bool is_check_ts)
 	return 1;
 }
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 int mtk_cam_mraw_apply_next_buffer(struct mtk_cam_ctx *ctx,
 	unsigned int pipe_id, u64 ts_ns, bool is_check_ts)
-
+#else
+int mtk_cam_mraw_apply_next_buffer(struct mtk_cam_ctx *ctx,
+	unsigned int pipe_id, u64 ts_ns)
+#endif
 {
 	struct mtk_mraw_working_buf_entry *buf_entry;
 	struct mtk_mraw_device *mraw_dev;
@@ -1242,11 +1246,14 @@ int mtk_cam_mraw_apply_next_buffer(struct mtk_cam_ctx *ctx,
 								struct mtk_mraw_working_buf_entry,
 								list_entry);
 			buf_entry->ts_mraw = ts_ns;
+			#ifdef OPLUS_FEATURE_CAMERA_COMMON
 			if (!is_check_ts) {
 				dev_dbg(ctx->cam->dev, "%s not check ts : pipe:%d raw:%lld mraw:%lld",
 					__func__, ctx->mraw_pipe[i]->id,
 					buf_entry->ts_raw, buf_entry->ts_mraw);
-			} else if ((buf_entry->ts_raw == 0) ||
+			}
+			#endif
+			else if ((buf_entry->ts_raw == 0) ||
 				(atomic_read(&buf_entry->is_apply) == 0) ||
 				((buf_entry->ts_mraw < buf_entry->ts_raw) &&
 				((buf_entry->ts_raw - buf_entry->ts_mraw) > 3000000))) {
@@ -2181,34 +2188,13 @@ void mraw_irq_handle_tg_grab_err(struct mtk_mraw_device *mraw_dev,
 	}
 }
 
-void mraw_irq_handle_dma_err(struct mtk_mraw_device *mraw_dev,
-	int dequeued_frame_seq_no)
+void mraw_irq_handle_dma_err(struct mtk_mraw_device *mraw_dev)
 {
-
-	struct mtk_cam_request_stream_data *s_data;
-	struct mtk_cam_ctx *ctx;
-
 	dev_info_ratelimited(mraw_dev->dev,
 		"IMGO:0x%x IMGBO:0x%x CPIO:0x%x\n",
 		readl_relaxed(mraw_dev->base + REG_MRAW_IMGO_ERR_STAT),
 		readl_relaxed(mraw_dev->base + REG_MRAW_IMGBO_ERR_STAT),
 		readl_relaxed(mraw_dev->base + REG_MRAW_CPIO_ERR_STAT));
-
-	ctx = mtk_cam_find_ctx(mraw_dev->cam, &mraw_dev->pipeline->subdev.entity);
-	if (!ctx) {
-		dev_info(mraw_dev->dev, "%s: cannot find ctx\n", __func__);
-		return;
-	}
-
-	s_data = mtk_cam_get_req_s_data(ctx,
-		mraw_dev->id + MTKCAM_SUBDEV_MRAW_START, dequeued_frame_seq_no);
-	if (s_data) {
-		mtk_cam_debug_seninf_dump(s_data);
-	} else {
-		dev_info(mraw_dev->dev,
-			 "%s: req(%d) can't be found for seninf dump\n",
-			 __func__, dequeued_frame_seq_no);
-	}
 }
 
 void mraw_irq_handle_fbc_debug(struct mtk_mraw_device *mraw_dev)
@@ -2348,7 +2334,7 @@ static void mraw_handle_error(struct mtk_mraw_device *mraw_dev,
 
 	/* Show DMA errors in detail */
 	if (err_status & DMA_ST_MASK_MRAW_ERR)
-		mraw_irq_handle_dma_err(mraw_dev, frame_idx_inner);
+		mraw_irq_handle_dma_err(mraw_dev);
 	/* Show TG register for more error detail*/
 	if (err_status & MRAWCTL_TG_GBERR_ST)
 		mraw_irq_handle_tg_grab_err(mraw_dev, frame_idx_inner);
@@ -2839,7 +2825,7 @@ static int mtk_mraw_runtime_suspend(struct device *dev)
 		mtk_cam_mraw_toggle_tg_db(mraw_dev);
 	}
 
-	dev_info(dev, "%s:disable clock\n", __func__);
+	dev_dbg(dev, "%s:disable clock\n", __func__);
 	for (i = 0; i < mraw_dev->num_clks; i++)
 		clk_disable_unprepare(mraw_dev->clks[i]);
 
@@ -2858,7 +2844,7 @@ static int mtk_mraw_runtime_resume(struct device *dev)
 
 	enable_irq(mraw_dev->irq);
 
-	dev_info(dev, "%s:enable clock\n", __func__);
+	dev_dbg(dev, "%s:enable clock\n", __func__);
 	for (i = 0; i < mraw_dev->num_clks; i++) {
 		ret = clk_prepare_enable(mraw_dev->clks[i]);
 		if (ret) {

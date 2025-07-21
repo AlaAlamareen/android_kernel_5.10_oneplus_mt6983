@@ -922,10 +922,8 @@ struct mtk_battery {
 	bool cmd_disable_nafg;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	/*fcc*/
-	int removed_bat_decidegc;
 	int prev_batt_fcc;
 	int prev_batt_remaining_capacity;
-	struct delayed_work	 oplus_startup_rm_check_work;
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 
 	/*battery plug in out*/

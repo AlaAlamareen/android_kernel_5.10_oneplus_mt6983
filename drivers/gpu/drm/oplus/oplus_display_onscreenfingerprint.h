@@ -53,11 +53,6 @@ struct oplus_ofp_params {
 	bool aod_state;									/* whether panel is aod state or not */
 	int doze_active;								/* DOZE_ACTIVE property value */
 	unsigned int aod_light_mode;					/* 0:50nit, 1:10nit */
-	unsigned int fake_aod_mode;					/*
-									indicates whether fake aod mode needs to be entered
-									bit(0):fake aod of primary display is enabled
-									bit(1):fake aod of secondary display is enabled
-									*/
 	unsigned int aod_off_hbm_on_delay;				/* do some frame delay to keep apart aod off cmd and hbm on cmd */
 	ktime_t aod_off_cmd_timestamp;					/* record aod off cmd timestamp for aod off hbm on delay judgment */
 	int hbm_enable;									/* HBM_ENABLE property value */
@@ -109,17 +104,14 @@ extern void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get, const char *fu
 
 /* -------------------- oplus_ofp_params -------------------- */
 inline bool oplus_ofp_is_support(void);
-bool oplus_ofp_video_mode_aod_fod_is_enabled(void);
 int oplus_ofp_init(void *mtk_drm_private);
 int oplus_ofp_get_aod_state(void);
 int oplus_ofp_set_aod_state(bool aod_state);
-bool oplus_ofp_get_fake_aod_mode(void);
 int oplus_ofp_get_hbm_state(void);
 int oplus_ofp_set_hbm_state(bool hbm_state);
 int oplus_ofp_property_update(int prop_id, unsigned int prop_val);
 
 /* -------------------- fod -------------------- */
-int oplus_ofp_send_hbm_state_event(unsigned int hbm_state);
 int oplus_ofp_hbm_handle(void *drm_crtc, void *mtk_crtc_state, void *cmdq_pkt);
 int oplus_ofp_pressed_icon_status_update(int irq_type);
 enum hrtimer_restart oplus_ofp_notify_uiready_timer_handler(struct hrtimer *timer);
@@ -160,12 +152,6 @@ int oplus_ofp_get_aod_light_mode(void *buf);
 ssize_t oplus_ofp_set_aod_light_mode_attr(struct kobject *obj,
 	struct kobj_attribute *attr, const char *buf, size_t count);
 ssize_t oplus_ofp_get_aod_light_mode_attr(struct kobject *obj,
-	struct kobj_attribute *attr, char *buf);
-int oplus_ofp_set_fake_aod(void *buf);
-int oplus_ofp_get_fake_aod(void *buf);
-ssize_t oplus_ofp_set_fake_aod_attr(struct kobject *obj,
-	struct kobj_attribute *attr, const char *buf, size_t count);
-ssize_t oplus_ofp_get_fake_aod_attr(struct kobject *obj,
 	struct kobj_attribute *attr, char *buf);
 
 #endif /*_OPLUS_DISPLAY_ONSCREENFINGERPRINT_H_*/

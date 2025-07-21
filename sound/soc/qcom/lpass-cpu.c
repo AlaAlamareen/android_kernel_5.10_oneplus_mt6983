@@ -745,19 +745,9 @@ static bool lpass_hdmi_regmap_volatile(struct device *dev, unsigned int reg)
 		return true;
 	if (reg == LPASS_HDMI_TX_LEGACY_ADDR(v))
 		return true;
-	if (reg == LPASS_HDMI_TX_VBIT_CTL_ADDR(v))
-		return true;
-	if (reg == LPASS_HDMI_TX_PARITY_ADDR(v))
-		return true;
 
 	for (i = 0; i < v->hdmi_rdma_channels; ++i) {
 		if (reg == LPAIF_HDMI_RDMACURR_REG(v, i))
-			return true;
-		if (reg == LPASS_HDMI_TX_DMA_ADDR(v, i))
-			return true;
-		if (reg == LPASS_HDMI_TX_CH_LSB_ADDR(v, i))
-			return true;
-		if (reg == LPASS_HDMI_TX_CH_MSB_ADDR(v, i))
 			return true;
 	}
 	return false;
@@ -816,11 +806,10 @@ static void of_lpass_cpu_parse_dai_data(struct device *dev,
 					struct lpass_data *data)
 {
 	struct device_node *node;
-	int ret, i, id;
+	int ret, id;
 
 	/* Allow all channels by default for backwards compatibility */
-	for (i = 0; i < data->variant->num_dai; i++) {
-		id = data->variant->dai_driver[i].id;
+	for (id = 0; id < data->variant->num_dai; id++) {
 		data->mi2s_playback_sd_mode[id] = LPAIF_I2SCTL_MODE_8CH;
 		data->mi2s_capture_sd_mode[id] = LPAIF_I2SCTL_MODE_8CH;
 	}

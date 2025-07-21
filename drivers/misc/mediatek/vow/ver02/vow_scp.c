@@ -209,4 +209,3 @@ RESEND_IPI:
 	return false;
 #endif
 }
-EXPORT_SYMBOL_GPL(vow_ipi_send);

@@ -60,7 +60,6 @@
 #define RETRY_CNT 3
 
 static int is_probe_sucess = 0;
-static u32 is_audio_support = 0;
 
 struct wusb3801_chip {
 	struct i2c_client *client;
@@ -360,7 +359,7 @@ static void wusb3801_irq_work_handler(struct kthread_work *work)
 				tcpc->typec_role = TYPEC_ROLE_SRC;
 				tcpci_notify_role_swap(tcpc, TCP_NOTIFY_DR_SWAP, PD_ROLE_DFP);
 		}*/
-			if (tcpc->typec_attach_new != TYPEC_ATTACHED_SRC && tcpc->typec_attach_new != TYPEC_ATTACHED_AUDIO) {
+			if (tcpc->typec_attach_new != TYPEC_ATTACHED_SRC) {
 				tcpc->typec_attach_old = tcpc->typec_attach_new;
 				tcpc->typec_attach_new = TYPEC_ATTACHED_SRC;
 				tcpci_source_vbus(tcpc, TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SOURCE_5V, 0);
@@ -372,23 +371,9 @@ static void wusb3801_irq_work_handler(struct kthread_work *work)
 				tcpc->typec_role = TYPEC_ROLE_SNK;
 				tcpci_notify_role_swap(tcpc, TCP_NOTIFY_DR_SWAP, PD_ROLE_UFP);
 		 }*/
-			if (tcpc->typec_attach_new != TYPEC_ATTACHED_SNK && tcpc->typec_attach_new != TYPEC_ATTACHED_AUDIO) {
+			if (tcpc->typec_attach_new != TYPEC_ATTACHED_SNK) {
 				tcpc->typec_attach_old = tcpc->typec_attach_new;
 				tcpc->typec_attach_new = TYPEC_ATTACHED_SNK;
-				tcpci_notify_typec_state(tcpc);
-			}
-			break;
-		case WUSB3801_TYPE_AUD_ACC:
-
-			if (tcpc->typec_attach_new != TYPEC_ATTACHED_SNK  && tcpc->typec_attach_new != TYPEC_ATTACHED_SRC) {
-				if (is_audio_support <= 0) {
-					pr_err("no support typec-audio out\n");
-					break;
-				}
-				pr_err("%s:%d: TYPEC_ATTACHED_AUDIO  return\n", __func__ , tcpc->typec_attach_new);
-				tcpc->typec_attach_old = tcpc->typec_attach_new;
-				tcpc->typec_attach_new = TYPEC_ATTACHED_AUDIO;
-				pr_err("%s: new :%u  old = %d \n", __func__ , tcpc->typec_attach_new, tcpc->typec_attach_old);
 				tcpci_notify_typec_state(tcpc);
 			}
 			break;
@@ -694,48 +679,6 @@ void wusb3801_set_cc_open(struct tcpc_device *tcpc)
 }
 EXPORT_SYMBOL(wusb3801_set_cc_open);
 
-void wusb3801_set_cc_open_recover(struct tcpc_device *tcpc)
-{
-	int rc = 0;
-
-	if (is_probe_sucess == 0) {
-		pr_err("%s: not for this chip!\n", __func__);
-		return;
-	}
-	pr_info("%s: enter!\n", __func__);
-
-	rc = i2c_smbus_read_byte_data(w_client, WUSB3801_REG_TEST_02);
-	if (rc < 0) {
-		pr_err("%s: fail to read WUSB3801_REG_TEST_02\n", __func__);
-		return;
-	}
-	pr_info("%s: original: reg:0x%02x, value:0x%02x\n", __func__, WUSB3801_REG_TEST_02, rc);
-
-	rc = i2c_smbus_write_byte_data(w_client,
-								   WUSB3801_REG_TEST_02, 0x00);
-	if (rc < 0) {
-		pr_err("%s: fail to write WUSB3801_REG_TEST_02, rc = %d\n", __func__, rc);
-		return;
-	}
-
-	rc = i2c_smbus_write_byte_data(w_client,
-								   WUSB3801_REG_TEST_04, 0x00);
-	if (rc < 0) {
-		pr_err("%s: fail to write WUSB3801_REG_TEST_04, rc = %d\n", __func__, rc);
-		return;
-	}
-
-	rc = i2c_smbus_read_byte_data(w_client, WUSB3801_REG_TEST_02);
-	if (rc < 0) {
-	   pr_err("%s: fail to read WUSB3801_REG_TEST_02\n", __func__);
-	   return;
-	}
-	pr_info("%s: open recover: reg:0x%02x, value:0x%02x\n", __func__, WUSB3801_REG_TEST_02, rc);
-
-	return;
-}
-EXPORT_SYMBOL(wusb3801_set_cc_open_recover);
-
 static int wusb3801_set_polarity(struct tcpc_device *tcpc, int polarity)
 {
 	pr_info("%s enter \n", __func__);
@@ -898,10 +841,6 @@ static int mt_parse_dt(struct wusb3801_chip *chip, struct device *dev)
 		return -ENODEV;
 	}
 
-	ret = of_property_read_u32(
-		np, "audio,support", &is_audio_support);
-	if (ret <= 0)
-		pr_err("%s no support typec-audio\n", __func__);
 #if (!IS_ENABLED(CONFIG_MTK_GPIO) || IS_ENABLED(CONFIG_MTK_GPIOLIB_STAND))
 	ret = of_get_named_gpio(np, "wusb3801,irq-gpio", 0);
 	if (ret < 0) {
@@ -981,16 +920,6 @@ static void wusb3801_first_check_typec_work(struct work_struct *work)
 		case WUSB3801_TYPE_SRC:
 			chip->tcpc->typec_attach_old = chip->tcpc->typec_attach_new;
 			chip->tcpc->typec_attach_new = TYPEC_ATTACHED_SNK;
-			tcpci_notify_typec_state(chip->tcpc);
-			break;
-		case WUSB3801_TYPE_AUD_ACC:
-			if (is_audio_support <= 0) {
-				pr_err("no support typec-audio out\n");
-				break;
-			}
-			chip->tcpc->typec_attach_old = chip->tcpc->typec_attach_new;
-			chip->tcpc->typec_attach_new = TYPEC_ATTACHED_AUDIO;
-			pr_err("%s: new :%u  old = %d \n", __func__ , chip->tcpc->typec_attach_old, chip->tcpc->typec_attach_new);
 			tcpci_notify_typec_state(chip->tcpc);
 			break;
 		default:
@@ -1330,7 +1259,8 @@ static void wusb3801_shutdown(struct i2c_client *client)
 
 	/* Please reset IC here */
 	if (chip != NULL) {
-		tcpm_shutdown(chip->tcpc);
+		wusb3801_i2c_write8(chip->tcpc,
+							WUSB3801_REG_CONTROL0, 0x00);
 		if (chip->irq)
 			disable_irq(chip->irq);
 	}

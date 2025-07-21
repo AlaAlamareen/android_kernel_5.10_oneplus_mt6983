@@ -11,62 +11,6 @@
 
 /* Legacy design */
 struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
-#if defined(HI846_MIPI_RAW_24695)
-		{
-			SENSOR_DRVNAME_HI846_MIPI_RAW_24695,
-			{
-			   {RST, Vol_Low, 1},
-			   {AFVDD, Vol_2800, 1},
-			   {DOVDD, Vol_High, 1},
-			   {DVDD, Vol_High, 1},
-			   {AVDD, Vol_High, 1},
-			   {SensorMCLK, Vol_High, 5},
-			   {RST, Vol_High, 5},
-			},
-		},
-#endif
-
-#if defined(HI556_MIPI_RAW_24695)
-	{
-		SENSOR_DRVNAME_HI556_MIPI_RAW_24695,
-		{
-			{RST, Vol_Low, 1},
-			{DOVDD, Vol_High, 1},
-			{DVDD, Vol_High, 1},
-			{AVDD, Vol_High, 1},
-			{SensorMCLK, Vol_High, 1},
-			{RST, Vol_High, 5}
-		},
-	},
-#endif
-#if defined(HI846_MIPI_RAW_SONIC)
-		{
-			SENSOR_DRVNAME_HI846_MIPI_RAW_SONIC,
-			{
-			   {RST, Vol_Low, 1},
-			   {AFVDD, Vol_2800, 1},
-			   {DOVDD, Vol_High, 1},
-			   {DVDD, Vol_High, 1},
-			   {AVDD, Vol_High, 1},
-			   {SensorMCLK, Vol_High, 5},
-			   {RST, Vol_High, 5},
-			},
-		},
-#endif
-
-#if defined(HI556_MIPI_RAW_SONIC)
-	{
-		SENSOR_DRVNAME_HI556_MIPI_RAW_SONIC,
-		{
-			{RST, Vol_Low, 1},
-			{DOVDD, Vol_High, 1},
-			{DVDD, Vol_High, 1},
-			{AVDD, Vol_High, 1},
-			{SensorMCLK, Vol_High, 1},
-			{RST, Vol_High, 5}
-		},
-	},
-#endif
 #if defined(S5KJN1_MIPI_RAW_DOKI)
 	{
 		SENSOR_DRVNAME_S5KJN1_MIPI_RAW_DOKI,
@@ -78,20 +22,6 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 			{AFVDD, Vol_2800, 3},
 			{RST, Vol_High, 2},
 			{SensorMCLK, Vol_High, 10}
-		},
-	},
-#endif
-#if defined(S5KHM6SP_MIPI_RAW_DOKI)
-	{
-		SENSOR_DRVNAME_S5KHM6SP_MIPI_RAW_DOKI,
-		{
-			{RST, Vol_Low, 1},
-			{DOVDD, Vol_1800, 1},
-			{AVDD, Vol_2200, 1},
-			{DVDD, Vol_1000, 1},
-			{AFVDD, Vol_2800, 3},
-			{RST, Vol_High, 1},
-			{SensorMCLK, Vol_High, 20}
 		},
 	},
 #endif
@@ -125,48 +55,6 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 #if defined(SC201CS_MIPI_MONO_DOKI)
 	{
 		SENSOR_DRVNAME_SC201CS_MIPI_MONO_DOKI,
-		{
-			{RST, Vol_Low, 1},
-			{DOVDD, Vol_1800, 2},
-			{AVDD1, Vol_High, 1},
-			{AVDD, Vol_2800, 1},
-			{RST, Vol_High, 2},
-			{RST, Vol_Low, 2},
-			{RST, Vol_High, 1},
-			{SensorMCLK, Vol_High, 5},
-		},
-	},
-#endif
-#if defined(OV16A1Q_MIPI_RAW_ADOKI)
-	{
-		SENSOR_DRVNAME_OV16A1Q_MIPI_RAW_ADOKI,
-		{
-			{RST, Vol_Low, 3},
-			{AVDD, Vol_2800, 0},
-			{DOVDD, Vol_1800, 1},
-			{AVDD1, Vol_High, 2},
-			{DVDD, Vol_1200, 0},
-			{SensorMCLK, Vol_High, 3},
-			{RST, Vol_High, 6}
-		},
-	},
-#endif
-#if defined(OV02B1B_MIPI_MONO_ADOKI)
-	{
-		SENSOR_DRVNAME_OV02B1B_MIPI_MONO_ADOKI,
-		{
-			{RST, Vol_Low, 1},
-			{DOVDD, Vol_1800, 1},
-			{AVDD1, Vol_High, 1},
-			{AVDD, Vol_2800, 6},
-			{SensorMCLK, Vol_High, 5},
-			{RST, Vol_High, 10}
-		},
-	},
-#endif
-#if defined(SC201CS_MIPI_MONO_ADOKI)
-	{
-		SENSOR_DRVNAME_SC201CS_MIPI_MONO_ADOKI,
 		{
 			{RST, Vol_Low, 1},
 			{DOVDD, Vol_1800, 2},
@@ -312,117 +200,6 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 	},
 #endif
 //changzheng -
-//24267 +
-#if defined(OV50D40_MIPI_RAW_24267)
-		{
-			SENSOR_DRVNAME_OV50D40_MIPI_RAW_24267,
-			{
-				{RST, Vol_Low, 1},
-				{AFVDD, Vol_2800, 1},
-				{DOVDD, Vol_1800, 3},
-				{AVDD, Vol_2800, 1},
-				{DVDD, Vol_1200, 1},
-				{SensorMCLK, Vol_High, 2},
-				{RST, Vol_High, 5},
-			},
-		},
-#endif
-#if defined(GC32E2_MIPI_RAW_24267)
-		{
-			SENSOR_DRVNAME_GC32E2_MIPI_RAW_24267,
-			{
-				{SensorMCLK, Vol_High, 0},
-				{RST, Vol_Low,  1},
-				{DOVDD, Vol_1800, 1},
-				{DVDD, Vol_1100, 1},
-				{AVDD, Vol_2800, 1},
-				{AVDD1, Vol_1200, 1},
-				{RST, Vol_High, 1},
-			},
-		},
-#endif
-#if defined(OV08D10_MIPI_RAW_24267)
-		{
-			SENSOR_DRVNAME_OV08D10_MIPI_RAW_24267,
-			{
-				{RST,        Vol_Low, 1},
-				{DOVDD,      Vol_1800, 1},
-				{AVDD,       Vol_2800, 1},
-				{DVDD,       Vol_1200, 6},
-				{RST,        Vol_High, 1},
-				{SensorMCLK, Vol_High, 9},
-			},
-		},
-#endif
-#if defined(OV02B10_MIPI_RAW_24267)
-		{
-			SENSOR_DRVNAME_OV02B10_MIPI_RAW_24267,
-			{
-				{RST, Vol_Low, 1},
-				{DOVDD, Vol_1800, 1},
-				{AVDD, Vol_2800, 8},
-				{SensorMCLK, Vol_High, 5},
-				{RST, Vol_High, 10}
-			},
-		},
-#endif
-//24267 -
-//bluey +
-#if defined(HI846_MIPI_RAW_MAIN_BLUEY)
-		{
-			SENSOR_DRVNAME_HI846_MIPI_RAW_MAIN_BLUEY,
-			{
-				{RST, Vol_Low, 1},
-				{AVDD, Vol_2800, 0},
-				{DVDD, Vol_1200, 0},
-				{DOVDD, Vol_1800, 1},
-				{AFVDD, Vol_2800, 3},
-				{SensorMCLK, Vol_High, 3},
-				{RST, Vol_High, 5}
-			},
-		},
-#endif
-#if defined(GC08A3_MIPI_RAW_BLUEY)
-		{
-			SENSOR_DRVNAME_GC08A3_MIPI_RAW_BLUEY,
-			{
-				{RST, Vol_Low, 1},
-				{DOVDD, Vol_1800, 2},
-				{DVDD, Vol_1200, 0},
-				{AVDD, Vol_2800, 1},
-				{AFVDD, Vol_2800, 3},
-				{SensorMCLK, Vol_High, 5},
-				{RST, Vol_High, 6}
-			},
-		},
-#endif
-#if defined(HI846SUB_MIPI_RAW_FRONT_BLUEY)
-		{
-			SENSOR_DRVNAME_HI846SUB_MIPI_RAW_FRONT_BLUEY,
-			{
-				{RST, Vol_Low, 1},
-				{AVDD, Vol_2800, 0},
-				{DVDD, Vol_1200, 0},
-				{DOVDD, Vol_1800, 1},
-				{SensorMCLK, Vol_High, 3},
-				{RST, Vol_High, 5}
-			},
-		},
-#endif
-#if defined(SC820CS_MIPI_RAW_BLUEY)
-		{
-			SENSOR_DRVNAME_SC820CS_MIPI_RAW_BLUEY,
-			{
-				{RST, Vol_Low, 1},
-				{DOVDD, Vol_1800, 2},
-				{DVDD, Vol_1200, 1},
-				{AVDD, Vol_2800, 1},
-				{RST, Vol_High, 5},
-				{SensorMCLK, Vol_High, 10}
-			},
-		},
-#endif
-//bluey -
 #if defined(IMX766_MIPI_RAW)
 	{
 		SENSOR_DRVNAME_IMX766_MIPI_RAW,

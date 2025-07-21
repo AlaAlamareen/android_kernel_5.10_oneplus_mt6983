@@ -23,7 +23,7 @@
 #include "mtk_imgsys-cmdq.h"
 #include "mtk_imgsys-module.h"
 #include "mtk_imgsys-trace.h"
-#include <linux/sched.h>
+
 #if MTK_CM4_SUPPORT
 #include <linux/remoteproc/mtk_scp.h>
 #endif
@@ -2329,7 +2329,7 @@ static void iova_worker(struct work_struct *work)
 	struct req_frameparam *req_frame;
 	struct mtk_imgsys_hw_subframe *buf;
 	struct img_ipi_frameparam *param;
-	sched_set_fifo_low(current);
+
 	req = container_of(work, struct mtk_imgsys_request, iova_work);
 	req->tstate.time_iovaworkp = ktime_get_boottime_ns()/1000;
 

@@ -19,7 +19,7 @@
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <soc/oplus/system/oplus_project.h>
+
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
@@ -64,9 +64,7 @@ static int pt_is_low(int pt_low_vol, int pt_low_bat, int pt_over_cur);
 #ifndef OPLUS_FEATURE_CAMERA_COMMON
 #define OPLUS_FEATURE_CAMERA_COMMON
 #endif
-const struct flashlight_device_id *flashlight_id;
-extern const struct flashlight_device_id flashlight_id_24267[];
-int flashlight_device_num = 0;
+
 /******************************************************************************
  * Flashlight operations
  *****************************************************************************/
@@ -369,10 +367,7 @@ int flashlight_dev_register(
 	struct flashlight_dev *fdev;
 	int type_index, ct_index, part_index;
 	int i;
-	if (is_project(24267) || is_project(24268) || is_project(24269)) {
-		flashlight_id = flashlight_id_24267;
-		flashlight_device_num = 1;
-	}
+
 	for (i = 0; i < flashlight_device_num; i++) {
 		if (!strncmp(name, flashlight_id[i].name,
 					FLASHLIGHT_NAME_SIZE)) {

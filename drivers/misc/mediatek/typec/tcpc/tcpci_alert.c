@@ -295,22 +295,6 @@ static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 	struct pd_msg dummy_msg = {0};
 	uint32_t alert_status;
 #endif
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	int rv1 = 0;
-	uint32_t chip_vid = 0;
-	uint32_t chip_pid = 0;
-	bool is_southchip_ic = false;
-	bool in_bist_mode = (tcpc->pd_bist_mode != PD_BIST_MODE_DISABLE);
-
-	rv1 = tcpci_get_chip_vid(tcpc, &chip_vid);
-	if (!rv1 && chip_vid == SOUTHCHIP_PD_VID) {
-		is_southchip_ic = true;
-		rv1 = tcpci_get_chip_pid(tcpc, &chip_pid);
-	}
-	if (!rv1 && (SC2150A_PID == chip_pid) && !in_bist_mode) {
-		tcpci_set_rx_enable(tcpc, PD_RX_CAP_PE_STARTUP);
-	}
-#endif
 	pd_msg = pd_alloc_msg(tcpc);
 	if (pd_msg == NULL) {
 		tcpci_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_MASK);
@@ -342,30 +326,6 @@ static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 
 	pd_msg->frame_type = (uint8_t) type;
 	pd_put_pd_msg_event(tcpc, pd_msg);
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	if (is_southchip_ic) {
-		tcpci_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_MASK);
-		if (!in_bist_mode) {
-			tcpc->recv_msg_cnt++;
-			if (!rv1 && (SC2150A_PID == chip_pid)) {
-				tcpci_set_rx_enable(tcpc, tcpc->pd_port.rx_cap);
-			}
-		}
-		TCPC_INFO("recv msg cnt = %d\n", tcpc->recv_msg_cnt);
-
-		if (tcpc->recv_msg_cnt > CONFIG_SOUTHCHIP_ERROR_MSG_CNT_MAX) {
-			tcpc->recv_msg_cnt = 0;
-			tcpc->int_invaild_cnt++;
-			tcpci_init(tcpc, true);
-			tcpci_set_watchdog(tcpc, true);
-			tcpc_typec_disable(tcpc);
-			mdelay(100);
-			tcpc_typec_enable(tcpc);
-			tcpci_set_watchdog(tcpc, false);
-		}
-	}
-#endif
 	return 0;
 }
 
@@ -509,9 +469,6 @@ int tcpci_alert(struct tcpc_device *tcpc)
 	int rv;
 	uint32_t alert_status;
 	uint32_t alert_mask;
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	uint32_t chip_vid;
-#endif
 
 	rv = tcpci_get_alert_status(tcpc, &alert_status);
 	if (rv)
@@ -532,10 +489,6 @@ int tcpci_alert(struct tcpc_device *tcpc)
 			  alert_status, alert_mask);
 #endif /* CONFIG_USB_PD_DBG_ALERT_STATUS */
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	rv = tcpci_get_chip_vid(tcpc, &chip_vid);
-	if (rv || chip_vid != SOUTHCHIP_PD_VID)
-#endif
 	alert_status &= alert_mask;
 
 	tcpci_alert_status_clear(tcpc,
@@ -670,10 +623,6 @@ static inline int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
 #if CONFIG_USB_PD_DISABLE_PE
 	if (tcpc->disable_pe)
 		return 0;
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	if (tcpc->int_invaild_cnt >= CONFIG_SOUTHCHIP_INT_INVAILD_RETRY_MAX)
-		return 0;
-#endif
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
 
 	/* MTK Only */

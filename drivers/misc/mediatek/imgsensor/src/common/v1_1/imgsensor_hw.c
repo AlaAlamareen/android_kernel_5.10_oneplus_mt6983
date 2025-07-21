@@ -11,11 +11,6 @@
 
 #include "imgsensor_sensor.h"
 #include "imgsensor_hw.h"
-#include <soc/oplus/system/oplus_project.h>
-#include "../../../../aw37004/aw37004.h"
-
-extern int aw37004_camera_power_up(int out_iotype, unsigned int out_val);
-extern int aw37004_camera_power_down(int out_iotype);
 
 /*the index is consistent with enum IMGSENSOR_HW_PIN*/
 char * const imgsensor_hw_pin_names[] = {
@@ -59,14 +54,7 @@ char * const imgsensor_hw_id_names[] = {
 	#endif
 };
 char * const imgsensor_prj_names[] = {
-	"tb8781p2_64",
-	"23922",
-	"23971",
-	"23972",
-	"23974",
-	"sonic",
-	"23973",
-	"24267"
+	"tb8781p2_64"
 };
 enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 {
@@ -99,16 +87,6 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 		if (custlen != 0 && strncmp(prj_name, imgsensor_prj_names[0], custlen)
 			== 0) {
 			pcust_pwr_cfg = imgsensor_mt8781_config;
-		} else if (custlen != 0 && ((strncmp(prj_name, imgsensor_prj_names[1], custlen)== 0) ||
-		    (strncmp(prj_name, imgsensor_prj_names[2], custlen) == 0) ||
-		    (strncmp(prj_name, imgsensor_prj_names[3], custlen) == 0) ||
-		    (strncmp(prj_name, imgsensor_prj_names[4], custlen) == 0) ||
-                    (strncmp(prj_name, imgsensor_prj_names[6], custlen) == 0))) {
-			pcust_pwr_cfg = imgsensor_bluey_config;
-		} else if (custlen != 0 && (strncmp(prj_name, imgsensor_prj_names[5], custlen)== 0) ) {
-			pcust_pwr_cfg = imgsensor_sonic_config;
-		} else if (custlen != 0 && (strncmp(prj_name, imgsensor_prj_names[7], custlen)== 0) ) {
-			pcust_pwr_cfg = imgsensor_24267_config;
 		} else {
 			pcust_pwr_cfg = imgsensor_custom_config;
 		}
@@ -213,16 +191,6 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 		if (custlen != 0 && strncmp(prj_name, imgsensor_prj_names[0], custlen)
 			== 0) {
 			pcust_pwr_cfg = imgsensor_mt8781_config;
-		} else if (custlen != 0 && ((strncmp(prj_name, imgsensor_prj_names[1], custlen)== 0) ||
-		    (strncmp(prj_name, imgsensor_prj_names[2], custlen) == 0) ||
-		    (strncmp(prj_name, imgsensor_prj_names[3], custlen) == 0) ||
-		    (strncmp(prj_name, imgsensor_prj_names[4], custlen) == 0) ||
-                    (strncmp(prj_name, imgsensor_prj_names[6], custlen) == 0))) {
-			pcust_pwr_cfg = imgsensor_bluey_config;
-		} else if (custlen != 0 && (strncmp(prj_name, imgsensor_prj_names[5], custlen)== 0) ) {
-			pcust_pwr_cfg = imgsensor_sonic_config;
-		} else if (custlen != 0 && (strncmp(prj_name, imgsensor_prj_names[7], custlen)== 0) ) {
-			pcust_pwr_cfg = imgsensor_24267_config;
 		} else {
 			pcust_pwr_cfg = imgsensor_custom_config;
 		}
@@ -292,8 +260,7 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 	int                               pin_cnt = 0;
 
 	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 30);
-	static int avdd1_flag = 0;
-	static int avdd2_flag = 0;
+
 #ifdef CONFIG_FPGA_EARLY_PORTING  /*for FPGA*/
 	if (1) {
 		PK_DBG("FPGA return true for power control\n");
@@ -324,45 +291,7 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 
 		if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
 			if (ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
-				if (is_project(24267) || is_project(24268) || is_project(24269)) {
-					if (ppwr_info->pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 0)) {
-						aw37004_camera_power_up(OUT_DVDD1, 1224);
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 2)) {
-						aw37004_camera_power_up(OUT_DVDD2, 1200);
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 1)) {
-						aw37004_camera_power_up(OUT_DVDD2, 1100);
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_AVDD) {
-						avdd1_flag ++;
-						pr_info("avdd1_flag = %d\n",avdd1_flag);
-						aw37004_camera_power_up(OUT_AVDD1, 2890);
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_DOVDD) {
-						avdd2_flag ++;
-						pr_info("avdd2_flag = %d\n",avdd2_flag);
-						aw37004_camera_power_up(OUT_AVDD2, 1800);
-					} else {
-						if (psensor_pwr->id[ppwr_info->pin] != IMGSENSOR_HW_ID_MAX_NUM) {
-							pdev = phw->pdev[psensor_pwr->id[ppwr_info->pin]];
-
-							if (__ratelimit(&ratelimit))
-								PK_DBG(
-								"sensor_idx %d, ppwr_info->pin %d(%s), ppwr_info->pin_state_on %d(%s), delay %u",
-								sensor_idx,
-								ppwr_info->pin,
-								imgsensor_hw_pin_names[ppwr_info->pin],
-								ppwr_info->pin_state_on,
-								imgsensor_hw_pin_state_names[ppwr_info->pin_state_on],
-								ppwr_info->pin_on_delay);
-
-							if (pdev->set != NULL)
-								pdev->set(
-									pdev->pinstance,
-									sensor_idx,
-									ppwr_info->pin,
-									ppwr_info->pin_state_on);
-						}
-					}
-				} else {
-					if (psensor_pwr->id[ppwr_info->pin] != IMGSENSOR_HW_ID_MAX_NUM) {
+				if (psensor_pwr->id[ppwr_info->pin] != IMGSENSOR_HW_ID_MAX_NUM) {
 					pdev = phw->pdev[psensor_pwr->id[ppwr_info->pin]];
 
 					if (__ratelimit(&ratelimit))
@@ -381,7 +310,6 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 							sensor_idx,
 							ppwr_info->pin,
 							ppwr_info->pin_state_on);
-					}
 				}
 			}
 
@@ -398,68 +326,25 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 			pin_cnt--;
 
 			if (ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
-				if (is_project(24267) || is_project(24268) || is_project(24269)) {
-					if (ppwr_info->pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 0)) {
-						aw37004_camera_power_down(OUT_DVDD1);
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_DVDD && ((sensor_idx == 1) || (sensor_idx == 2))) {
-						aw37004_camera_power_down(OUT_DVDD2);
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_AVDD) {
-						if (avdd1_flag > 1) {
-							pr_info("avdd1_flag = %d do not power down\n",avdd1_flag);
-						} else {
-							aw37004_camera_power_down(OUT_AVDD1);
-						}
-						avdd1_flag --;
-					} else if (ppwr_info->pin == IMGSENSOR_HW_PIN_DOVDD) {
-						if (avdd2_flag > 1) {
-							pr_info("avdd2_flag = %d do not power down\n",avdd2_flag);
-						} else {
-							aw37004_camera_power_down(OUT_AVDD2);
-						}
-						avdd2_flag --;
-					} else {
-						if (psensor_pwr->id[ppwr_info->pin] != IMGSENSOR_HW_ID_MAX_NUM) {
-							pdev = phw->pdev[psensor_pwr->id[ppwr_info->pin]];
+				if (psensor_pwr->id[ppwr_info->pin] != IMGSENSOR_HW_ID_MAX_NUM) {
+					pdev = phw->pdev[psensor_pwr->id[ppwr_info->pin]];
 
-							if (__ratelimit(&ratelimit))
-								PK_DBG(
-								"sensor_idx %d, ppwr_info->pin %d(%s), ppwr_info->pin_state_off %d(%s), delay %u",
-								sensor_idx,
-								ppwr_info->pin,
-								imgsensor_hw_pin_names[ppwr_info->pin],
-								ppwr_info->pin_state_off,
-								imgsensor_hw_pin_state_names[ppwr_info->pin_state_off],
-								ppwr_info->pin_on_delay);
+					if (__ratelimit(&ratelimit))
+						PK_DBG(
+						"sensor_idx %d, ppwr_info->pin %d(%s), ppwr_info->pin_state_off %d(%s), delay %u",
+						sensor_idx,
+						ppwr_info->pin,
+						imgsensor_hw_pin_names[ppwr_info->pin],
+						ppwr_info->pin_state_off,
+						imgsensor_hw_pin_state_names[ppwr_info->pin_state_off],
+						ppwr_info->pin_on_delay);
 
-							if (pdev->set != NULL)
-								pdev->set(
-									pdev->pinstance,
-									sensor_idx,
-									ppwr_info->pin,
-									ppwr_info->pin_state_off);
-						}
-					}
-				} else {
-					if (psensor_pwr->id[ppwr_info->pin] != IMGSENSOR_HW_ID_MAX_NUM) {
-						pdev = phw->pdev[psensor_pwr->id[ppwr_info->pin]];
-
-						if (__ratelimit(&ratelimit))
-							PK_DBG(
-							"sensor_idx %d, ppwr_info->pin %d(%s), ppwr_info->pin_state_off %d(%s), delay %u",
+					if (pdev->set != NULL)
+						pdev->set(
+							pdev->pinstance,
 							sensor_idx,
 							ppwr_info->pin,
-							imgsensor_hw_pin_names[ppwr_info->pin],
-							ppwr_info->pin_state_off,
-							imgsensor_hw_pin_state_names[ppwr_info->pin_state_off],
-							ppwr_info->pin_on_delay);
-
-						if (pdev->set != NULL)
-							pdev->set(
-								pdev->pinstance,
-								sensor_idx,
-								ppwr_info->pin,
-								ppwr_info->pin_state_off);
-					}
+							ppwr_info->pin_state_off);
 				}
 			}
 

@@ -1429,6 +1429,17 @@ static int lcm_panel_poweroff(struct drm_panel *panel)
 		}
 	}
 
+	if((mode == MSM_BOOT_MODE__FACTORY) || (mode == MSM_BOOT_MODE__RF) || (mode == MSM_BOOT_MODE__WLAN)) {
+			#define LCD_CTL_RST_OFF 0x12
+			#define LCD_CTL_CS_OFF  0x1A
+			blank = LCD_CTL_RST_OFF;
+			mtk_disp_notifier_call_chain(MTK_DISP_EVENT_FOR_TOUCH, &blank);
+			pr_err("[TP] Now mode is %d\n",mode);
+			pr_err("TP reset will low\n");
+			blank = LCD_CTL_CS_OFF;
+			mtk_disp_notifier_call_chain(MTK_DISP_EVENT_FOR_TOUCH, &blank);
+			pr_err("[TP]TP CS will chang to gpio mode and low\n");
+	}
 
 /*
 	ctx->pw_1p8_gpio = devm_gpiod_get(ctx->dev, "pw-gpio", GPIOD_OUT_HIGH);
@@ -1504,11 +1515,6 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-
-	if (!m) {
-		pr_err("%s:%d invalid display_mode\n", __func__, __LINE__);
-		return ret;
-	}
 
     if (drm_mode_vrefresh(m) == 60){
         ext->params = &ext_params;

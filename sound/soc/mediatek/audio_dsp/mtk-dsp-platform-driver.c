@@ -22,14 +22,18 @@
 #include "mtk-dsp-platform-driver.h"
 #include "mtk-base-afe.h"
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#define OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR  10043
+#define UNDERRUN_ERR_VERSION                  "1.0.0"
+#define OPLUS_MTK_UNDERRUN_FEEDBACK_CNT   (20)
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 static DEFINE_MUTEX(adsp_wakelock_lock);
 
 #define IPIMSG_SHARE_MEM (1024)
 #define DSP_IRQ_LOOP_COUNT (3)
-//#ifdef OPLUS_ARCH_EXTENDS
-/* 2023/01/17, add patch for ALPS07829227 */
-static int adsp_wakelock_count = 0;
-//#endif
+static int adsp_wakelock_count;
 static struct wakeup_source *adsp_audio_wakelock;
 static int ktv_status;
 
@@ -160,29 +164,6 @@ static int dsp_wakelock_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = adsp_wakelock_count;
 	return 0;
 }
-
-//#ifdef OPLUS_ARCH_EXTENDS
-/* 2023/01/17, add patch for ALPS07829227 */
-static int reset_dsp_wakelock_set(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	mutex_lock(&adsp_wakelock_lock);
-	pr_info("%s reset wakelock for audiohal reboot %d", __func__, adsp_wakelock_count);
-	if (adsp_wakelock_count > 0)
-	{
-		aud_wake_unlock(adsp_audio_wakelock);
-		adsp_wakelock_count = 0;
-	}
-	mutex_unlock(&adsp_wakelock_lock);
-	return 0;
-}
-
-static int reset_dsp_wakelock_get(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	return 0;
-}
-//#endif
 
 static int audio_dsp_version_set(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
@@ -323,11 +304,6 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       ktv_status_get, ktv_status_set),
 	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_wakelock_get, dsp_wakelock_set),
-//#ifdef OPLUS_ARCH_EXTENDS
-/* 2023/01/17, add patch for ALPS07829227 */
-	SOC_SINGLE_EXT("reset_audio_dsp_wakelock", SND_SOC_NOPM, 0, 0x1, 0,
-		       reset_dsp_wakelock_get, reset_dsp_wakelock_set),
-//#endif
 };
 
 static snd_pcm_uframes_t mtk_dsphw_pcm_pointer_ul
@@ -564,6 +540,9 @@ static bool mtk_dsp_check_exception(struct mtk_base_dsp *dsp,
 	/* adsp reset message */
 	if (ipi_msg && ipi_msg->param2 == ADSP_DL_CONSUME_RESET) {
 		pr_info("%s() %s adsp reset\n", __func__, task_name);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+		dsp->dsp_mem[id].underflow_cnt++;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		RingBuf_Reset(&dsp->dsp_mem[id].ring_buf);
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
 		return true;
@@ -573,6 +552,9 @@ static bool mtk_dsp_check_exception(struct mtk_base_dsp *dsp,
 	if (ipi_msg && ipi_msg->param2 == ADSP_DL_CONSUME_UNDERFLOW) {
 		pr_info("%s() %s adsp underflow\n", __func__, task_name);
 		dsp->dsp_mem[id].underflowed = true;
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+		dsp->dsp_mem[id].underflow_cnt++;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
 
 		return true;
@@ -810,6 +792,27 @@ static int mtk_dsp_pcm_close(struct snd_soc_component *component,
 	const char *task_name = get_str_by_dsp_dai_id(id);
 
 	pr_info("%s() %s\n", __func__, task_name);
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	if (dsp->dsp_mem[id].underflow_cnt > OPLUS_MTK_UNDERRUN_FEEDBACK_CNT) {
+		if (substream->pcm && substream->runtime) {
+			mm_fb_audio(OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR, MM_FB_KEY_RATELIMIT_5MIN, 0, FB_HIGH, \
+					"payload@@MTK adsp underflow,task_scene=%d,underrun=%d,pcm=%d,sample_rate=%d", \
+					get_dspscene_by_dspdaiid(id), \
+					dsp->dsp_mem[id].underflow_cnt, \
+					substream->pcm->device, \
+					substream->runtime->rate);
+		} else {
+			mm_fb_audio(OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR, MM_FB_KEY_RATELIMIT_5MIN, 0, FB_HIGH, \
+					"payload@@MTK adsp underflow,task_scene=%d,underrun=%d", \
+					get_dspscene_by_dspdaiid(id), \
+					dsp->dsp_mem[id].underflow_cnt);
+		}
+	}
+	pr_info("%s(), task_scene = %d, underflow_cnt = %d\n", __func__,
+			get_dspscene_by_dspdaiid(id), dsp->dsp_mem[id].underflow_cnt);
+	dsp->dsp_mem[id].underflow_cnt = 0;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	/* send to task with close information */
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_MSG_ONLY,
@@ -1424,6 +1427,11 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 #ifdef CFG_RECOVERY_SUPPORT
 	adsp_register_notify(&adsp_audio_notifier);
 #endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+	pr_info("%s, event_id=%u, version:%s", __func__, \
+		OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR, UNDERRUN_ERR_VERSION);
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	return ret;
 }

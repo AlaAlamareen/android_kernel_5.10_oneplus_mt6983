@@ -84,25 +84,22 @@
 		charger_pump_support;
 		game_switch_support;
 		smart_gesture_support;
-		//spi_port_support;
+		spi_port_support;
 		fw_update_app_support;
 		fingerprint_underscreen_support;
-		fp_disable_after_resume;
 		freq_hop_simulate_support;
 		report_flow_unlock_support;
 		screenoff_fingerprint_info_support;
 		irq_need_dev_resume_ok;
-		//report_rate_white_list_support;
+		report_rate_white_list_support;
 		kernel_grip_support;
 		//grip_no_driver_support;
 		health_monitor_support;
 		black_gesture_indep_support;
-		//algorithm_support;
+		algorithm_support;
 		temperature_detect_shellback_support;
 		snr_read_support;
 		exception_upload_support;
-		palm_to_sleep_support;
-		fingerprint_not_report_in_suspend;
 		/*
 		 *Virtual Key Config:
 		 *1:touchpanel,button-type: <virtualkey_type  supportted_button-map>
@@ -174,26 +171,11 @@
 			prevention,edge_swipe_config = <300 1000>;
 
 			prevention,curved_screen_V4;
-			prevention,long_eliminate_point_type = <2 10800 7236 400 24120 300 1>;
 			prevention,long_fingerhold_condition2 = <700 2000 0 0>;
 			prevention,top_corner_config2 =<3 80 420 1500 0>;
 			prevention,hor_long_top_corner_config =<300 2000 0 0>;
 			prevention,top_middle_config =<10800 1000 1000 0>;
-			prevention,corner_eliminate_point_type =<0 1200 2000 1>;
-			prevention,finger_hold_differ_size = <1 0 300 300>;
-			prevention,finger_hold_max_rx_exit_distance = <5 300 2000>;
-			prevention,max_rx_exit_distance = <1 5 150 300 2000>;
-			prevention,dynamic_finger_hold_exit_distance = <1 300 2000 450>;
-			prevention,edge_sliding_matched_support = <1 220 3 0>;
-
-			//grip v4.2 reclining mode
-			prevention,reclining_mode_support = <1>;
-			prevention,long_eliminate_point_type_recli = <2 10800 7236 420 24120 500 1>;
-			prevention,finger_hold_differ_size_recli = <1 0 300 400>;
-			prevention,finger_hold_max_rx_exit_distance_recli = <5 300 2000>;
-			prevention,max_rx_exit_distance_recli = <1 5 110 300 2000>;
-			prevention,dynamic_finger_hold_exit_distance_recli = <1 300 2000 450>;
-			prevention,edge_sliding_matched_support_recli = <1 220 3 0>;
+			prevention,corner_eliminate_point_type =<0 1200 2000 0>;
 		};
 
 		FT3681_PANEL3 {

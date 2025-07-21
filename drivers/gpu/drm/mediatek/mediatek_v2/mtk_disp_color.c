@@ -25,7 +25,6 @@
 #include "mtk_dump.h"
 #include "platform/mtk_drm_6789.h"
 #include "mtk_disp_ccorr.h"
-#include "rgb565.h"
 
 #define UNUSED(expr) (void)(expr)
 #define index_of_color(module) ((module == DDP_COMPONENT_COLOR0) ? 0 : 1)
@@ -3069,125 +3068,6 @@ int mtk_drm_ioctl_bypass_color(struct drm_device *dev, void *data,
 	return ret;
 }
 
-int mtk_drm_ioctl_set_paper_mode(int strength, int width, int height, char *buffer)
-{
-	int i = 0;
-	char colorA = 0x11;
-	int range = 0;
-	int base = 0;
-	int G, R, j;
-	unsigned int n = 0;
-	int t1 = width*height;
-	int t2 = width*height/4;
-	int times = t1/t2;
-	int reminder = t1 % t2;
-	char RG,GB;
-
-	while(i < t2)
-	{
-		switch(strength) {
-		case 1:
-			range = 4;
-			base = 10;
-			colorA = 0x14;
-			break;
-		case 2:
-			range = 5;
-			base = 10;
-			colorA = 0x19;
-			break;
-		case 3:
-			range = 5;
-			base = 11;
-			colorA = 0x1E;
-			break;
-		case 4:
-			range = 5;
-			base = 12;
-			colorA = 0x23;
-			break;
-		case 5:
-			range = 6;
-			base = 13;
-			colorA = 0x28;
-			break;
-		case 6:
-			range = 6;
-			base = 14;
-			colorA = 0x2D;
-			break;
-		case 7:
-			range = 6;
-			base = 15;
-			colorA = 0x33;
-			break;
-		case 8:
-			range = 7;
-			base = 15;
-			colorA = 0x38;
-			break;
-		case 9:
-			range = 8;
-			base = 15;
-			colorA = 0x3D;
-			break;
-		case 10:
-			range = 9;
-			base = 15;
-			colorA = 0x42;
-			break;
-		case 11:
-			range = 10;
-			base = 15;
-			colorA = 0x47;
-			break;
-		case 12:
-			range = 10;
-			base = 16;
-			colorA = 0x4C;
-			break;
-		case 13:
-			range = 10;
-			base = 17;
-			colorA = 0x51;
-			break;
-		case 14:
-			range = 10;
-			base = 18;
-			colorA = 0x56;
-			break;
-		case 15:
-			range = 10;
-			base = 19;
-			colorA = 0x5B;
-			break;
-		default:
-			range = 15;
-			base = 15;
-			colorA = 0x16;
-			break;
-		}
-		get_random_bytes(&n, sizeof(n));
-		R = (int)(n%range + base);
-		G = 2*R;
-		if(G%2 == 0)
-			G = G+1;
-		RG = (char)(R + ((G&0x7)<<5));
-		GB = (char)((R<<3) + ((G&0x38)>>3));
-		buffer[i*2] = RG;
-		buffer[i*2+1] = GB;
-		i++;
-	}
-	for (j = 1; j < times; j++)
-		memcpy(buffer + j*t2*2, buffer, 2*t2*sizeof(char));
-	if (reminder != 0)
-		memcpy(buffer + times*t2*2, buffer, sizeof(char)*reminder);
-
-	return colorA;
-
-
-}
-
 int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
@@ -3509,7 +3389,6 @@ static void ddp_color_restore(struct mtk_ddp_comp *comp)
 static void mtk_color_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
-	bool is_color_restore = (g_color_backup.COLOR_CFG_MAIN != 0);
 
 	mtk_ddp_comp_clk_prepare(comp);
 	atomic_set(&g_color_is_clock_on[index_of_color(comp->id)], 1);
@@ -3520,8 +3399,7 @@ static void mtk_color_prepare(struct mtk_ddp_comp *comp)
 			DISP_COLOR_SHADOW_CTRL, COLOR_BYPASS_SHADOW);
 
 	// restore DISP_COLOR_CFG_MAIN register
-	if (is_color_restore)
-		ddp_color_restore(comp);
+	ddp_color_restore(comp);
 }
 
 static void mtk_color_unprepare(struct mtk_ddp_comp *comp)

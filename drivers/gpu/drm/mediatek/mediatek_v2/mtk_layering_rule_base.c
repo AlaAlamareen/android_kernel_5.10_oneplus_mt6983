@@ -36,7 +36,6 @@
 #include "mtk_drm_assert.h"
 #include "mtk_log.h"
 #include "mtk_drm_mmp.h"
-#include "mtk_drm_crtc.h"
 #define CREATE_TRACE_POINTS
 #include "mtk_layer_layout_trace.h"
 #include "mtk_drm_gem.h"
@@ -801,20 +800,10 @@ static int _filter_by_ovl_cnt(struct drm_device *dev,
 {
 	int ovl_num_limit, phy_ovl_cnt;
 	uint16_t l_tb;
-	struct drm_crtc *crtc = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (disp_info->layer_num[disp_idx] <= 0) {
 		/* direct skip */
 		return 0;
-	}
-
-	drm_for_each_crtc(crtc, dev) {
-		if (drm_crtc_index(crtc) == 0) {
-			mtk_crtc = to_mtk_crtc(crtc);
- 			break;
-
-		}
 	}
 
 retry:
@@ -824,9 +813,6 @@ retry:
 
 	ovl_num_limit = mtk_get_phy_layer_limit(l_tb);
 	if (disp_idx == 0 && l_rule_info->dal_enable)
-		ovl_num_limit--;
-
-	if (disp_idx == 0 && mtk_crtc && mtk_crtc->paper_mode != paper_disabled)
 		ovl_num_limit--;
 
 #ifdef HRT_DEBUG_LEVEL2
@@ -878,15 +864,6 @@ static int ext_id_tuning(struct drm_device *dev,
 	int phy_ovl_cnt, i;
 	int ext_cnt = 0, cur_phy_cnt = 0;
 	struct drm_mtk_layer_config *layer_info;
-	struct drm_crtc *crtc = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-
-	drm_for_each_crtc(crtc, dev) {
-		if (drm_crtc_index(crtc) == 0) {
-			mtk_crtc = to_mtk_crtc(crtc);
- 			break;
-		}
-	}
 
 	if (info->layer_num[disp] <= 0) {
 		/* direct skip */
@@ -910,16 +887,7 @@ static int ext_id_tuning(struct drm_device *dev,
 			dev, disp, DISP_HW_LAYER_TB, MAX_PHY_OVL_CNT);
 		l_tb &= HRT_AEE_LAYER_MASK;
 	}
-	if (mtk_crtc && mtk_crtc->paper_mode != paper_disabled) {
-		l_tb = l_rule_ops->get_mapping_table(
-			dev, disp, DISP_HW_LAYER_TB,
-			MAX_PHY_OVL_CNT);
-		if (l_rule_info->dal_enable) {
-			l_tb &= HRT_PAPER_DAL_LAYER_MASK;
-		} else {
-			l_tb &= HRT_PAPER_LAYER_MASK;
-		}
-	}
+
 	for (i = 0; i < info->layer_num[disp]; i++) {
 		layer_info = &info->input_config[disp][i];
 		if (is_extended_layer(layer_info)) {
@@ -1364,15 +1332,6 @@ static int _calc_hrt_num(struct drm_device *dev,
 	int overlap_w, layer_idx, phy_layer_idx, ovl_cnt;
 	bool has_gles = false;
 	struct drm_mtk_layer_config *layer_info;
-	struct drm_crtc *crtc;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-
-	drm_for_each_crtc(crtc, dev) {
-		if (drm_crtc_index(crtc) == 0) {
-			mtk_crtc = to_mtk_crtc(crtc);
- 			break;
-		}
-	}
 
 	if (!has_hrt_limit(disp_info, disp))
 		return 0;
@@ -1398,17 +1357,6 @@ static int _calc_hrt_num(struct drm_device *dev,
 		layer_map = l_rule_ops->get_mapping_table(
 			dev, disp, DISP_HW_LAYER_TB, MAX_PHY_OVL_CNT);
 		layer_map &= HRT_AEE_LAYER_MASK;
-	}
-
-	if (mtk_crtc &&	mtk_crtc->paper_mode != paper_disabled) {
-		layer_map = l_rule_ops->get_mapping_table(
-			dev, disp, DISP_HW_LAYER_TB,
-			MAX_PHY_OVL_CNT);
-		if (l_rule_info->dal_enable) {
-			layer_map &= HRT_PAPER_DAL_LAYER_MASK;
-		} else {
-			layer_map &= HRT_PAPER_LAYER_MASK;
-		}
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp]; i++) {
@@ -1471,9 +1419,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 
 	if (has_dal_layer)
 		sum_overlap_w += HRT_AEE_WEIGHT;
-	if (mtk_crtc && mtk_crtc->paper_mode != paper_disabled) {
-		sum_overlap_w += HRT_PAPER_MODE_WEIGHT;
-	}
+
 	/*
 	 * 3.Calculate the HRT bound if the total layer weight over the
 	 * lower bound or has secondary display.
@@ -1487,9 +1433,6 @@ static int _calc_hrt_num(struct drm_device *dev,
 			sum_overlap_w += get_layer_weight(disp, NULL);
 		if (has_dal_layer)
 			sum_overlap_w += HRT_AEE_WEIGHT;
-		if (mtk_crtc && mtk_crtc->paper_mode != paper_disabled) {
-			sum_overlap_w += HRT_PAPER_MODE_WEIGHT;
-		}
 	}
 
 #ifdef HRT_DEBUG_LEVEL1
@@ -1562,7 +1505,7 @@ static int calc_hrt_num(struct drm_device *dev,
 	if (disp_info->layer_num[HRT_PRIMARY] <= 0 &&
 		l_rule_info->dal_enable) {
 		sum_overlap_w += HRT_AEE_WEIGHT;
-		DDPMSG("%s: only dal layer,set sum_overlap_w = %d\n", __func__, sum_overlap_w);
+		DDPMSG("%s: only dal layer,set sum_overlap_w = %d\n", sum_overlap_w);
 	}
 
 	emi_hrt_level = get_hrt_level(sum_overlap_w, false);
@@ -2026,15 +1969,6 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 {
 	int disp_idx;
 	bool no_disp = true;
-	struct drm_crtc *crtc;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-
-	drm_for_each_crtc(crtc, drm_dev) {
-		if (drm_crtc_index(crtc) == 0) {
-			mtk_crtc = to_mtk_crtc(crtc);
- 			break;
-		}
-	}
 
 	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++)
 		if (disp_info->layer_num[disp_idx] > 0) {
@@ -2055,10 +1989,6 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 
 		if (l_rule_info->dal_enable)
 			valid_ovl_cnt -= (HRT_AEE_WEIGHT / HRT_UINT_BOUND_BPP);
-
-		if (mtk_crtc && mtk_crtc->paper_mode != paper_disabled) {
-			valid_ovl_cnt -= (HRT_PAPER_MODE_WEIGHT / HRT_UINT_BOUND_BPP);
-		}
 		valid_ovl_cnt /= HRT_UINT_WEIGHT;
 
 		hrt_disp_num--;
@@ -2093,15 +2023,6 @@ static int dispatch_ovl_id(struct drm_mtk_layering_info *disp_info,
 
 	bool no_disp = true;
 	int disp_idx;
-	struct drm_crtc *crtc;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-
-	drm_for_each_crtc(crtc, drm_dev) {
-		if (drm_crtc_index(crtc) == 0) {
-			mtk_crtc = to_mtk_crtc(crtc);
-			break;
-		}
-	}
 
 	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++)
 		if (disp_info->layer_num[disp_idx] > 0) {
@@ -2146,18 +2067,6 @@ static int dispatch_ovl_id(struct drm_mtk_layering_info *disp_info,
 				MAX_PHY_OVL_CNT);
 			layer_map &= HRT_AEE_LAYER_MASK;
 		}
-
-		if (mtk_crtc && mtk_crtc->paper_mode != paper_disabled) {
-			layer_map = l_rule_ops->get_mapping_table(
-				drm_dev, disp_idx, DISP_HW_LAYER_TB,
-				MAX_PHY_OVL_CNT);
-			if (l_rule_info->dal_enable) {
-				layer_map &= HRT_PAPER_DAL_LAYER_MASK;
-			} else {
-				layer_map &= HRT_PAPER_LAYER_MASK;
-			}
-		}
-
 		_dispatch_lye_blob_idx(disp_info, layer_map,
 			disp_idx, lyeblob_ids, drm_dev);
 	}
@@ -3182,9 +3091,6 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 
 	l_rule_ops->copy_hrt_bound_table(&layering_info,
 		0, g_emi_bound_table, dev);
-
-	if (disp_idx == 0 && l_rule_ops->rollback_to_new_hrt_for_paper_mode)
-		l_rule_ops->rollback_to_new_hrt_for_paper_mode(dev, l_rule_info->hrt_idx);
 
 	/* 1.Pre-distribution */
 	l_rule_info->dal_enable = mtk_drm_dal_enable();

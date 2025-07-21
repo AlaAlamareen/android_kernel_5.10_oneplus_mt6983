@@ -131,7 +131,7 @@ int lcd_bl_i2c_read_dual(struct i2c_client *i2c_client0, unsigned char i2c_clien
 }
 EXPORT_SYMBOL(lcd_bl_i2c_read_dual);
 
- int lcd_bl_write_byte(unsigned char addr, unsigned char value)
+static int lcd_bl_write_byte(unsigned char addr, unsigned char value)
 {
 	int ret = 0;
 	unsigned char write_data[2] = {0};
@@ -150,7 +150,7 @@ EXPORT_SYMBOL(lcd_bl_i2c_read_dual);
 
 	return ret;
 }
-EXPORT_SYMBOL(lcd_bl_write_byte);
+
 static int lcd_bl_read_byte(u8 regnum)
 {
 	u8 buffer[1], reg_value[1];

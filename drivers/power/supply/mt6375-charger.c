@@ -2172,14 +2172,6 @@ static int mt6375_enable_otg(struct charger_device *chgdev, bool en)
 		dev_err(ddata->dev, "failed to get otg regulator\n");
 		return PTR_ERR(regulator);
 	}
-#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_OPLUS_CHARGER_MTK6789S)
-/* BSP.CHG.Basic,2023/07/26, only for mt6789 with ccdetect project*/
-	if ((regulator_is_enabled(regulator) && en) ||
-		(!regulator_is_enabled(regulator) && !en)) {
-		devm_regulator_put(regulator);
-		return 0;
-	}
-#endif
 	ret = en ? regulator_enable(regulator) : regulator_disable(regulator);
 	devm_regulator_put(regulator);
 	return ret;
@@ -2739,7 +2731,7 @@ static void mt6375_hvdcp_work(struct work_struct *work)
 
 	printk("%s: device type: %d\n", __func__, ret);
 
-	if (ret & BIT(6)) {
+	if (val & BIT(6)) {
 		printk("%s: hvdcp detect\n", __func__);
 		ddata->hvdcp_type = POWER_SUPPLY_TYPE_USB_HVDCP;
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -3334,7 +3326,7 @@ bool mt6375_int_chrdet_attach(void)
 	u32 val;
 
 	if (NULL == oplus_ddata) {
-		return false;
+		return -EINVAL;
 	}
 
 	ret = mt6375_chg_field_get(oplus_ddata, F_CHRDET_EXT, &val);

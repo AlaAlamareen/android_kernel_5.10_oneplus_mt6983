@@ -950,99 +950,6 @@ static char aw_rtp_name_162Hz[][AW_RTP_NAME_MAX] = {
 	{"480ms_RTP_319.bin"},
 	{"500ms_RTP_320.bin"},
 	{"AT500ms_RTP_321.bin"},
-
-	{"aw8697_reserved_322.bin"},
-	{"aw8697_reserved_323.bin"},
-	{"aw8697_reserved_324.bin"},
-	{"aw8697_reserved_325.bin"},
-	{"aw8697_reserved_326.bin"},
-	{"aw8697_reserved_327.bin"},
-	{"aw8697_reserved_328.bin"},
-	{"aw8697_reserved_329.bin"},
-	{"aw8697_reserved_330.bin"},
-	{"aw8697_reserved_331.bin"},
-	{"aw8697_reserved_332.bin"},
-	{"aw8697_reserved_333.bin"},
-	{"aw8697_reserved_334.bin"},
-	{"aw8697_reserved_335.bin"},
-	{"aw8697_reserved_336.bin"},
-	{"aw8697_reserved_337.bin"},
-	{"aw8697_reserved_338.bin"},
-	{"aw8697_reserved_339.bin"},
-	{"aw8697_reserved_340.bin"},
-	{"aw8697_reserved_341.bin"},
-	{"aw8697_reserved_342.bin"},
-	{"aw8697_reserved_343.bin"},
-	{"aw8697_reserved_344.bin"},
-	{"aw8697_reserved_345.bin"},
-	{"aw8697_reserved_346.bin"},
-	{"aw8697_reserved_347.bin"},
-	{"aw8697_reserved_348.bin"},
-	{"aw8697_reserved_349.bin"},
-	{"aw8697_reserved_350.bin"},
-	{"aw8697_reserved_351.bin"},
-	{"aw8697_reserved_352.bin"},
-	{"aw8697_reserved_353.bin"},
-	{"aw8697_reserved_354.bin"},
-	{"aw8697_reserved_355.bin"},
-	{"aw8697_reserved_356.bin"},
-	{"aw8697_reserved_357.bin"},
-	{"aw8697_reserved_358.bin"},
-	{"aw8697_reserved_359.bin"},
-	{"aw8697_reserved_360.bin"},
-	{"aw8697_reserved_361.bin"},
-	{"aw8697_reserved_362.bin"},
-	{"aw8697_programs_clean_RTP_363_162Hz.bin"},
-	{"aw8697_reserved_364.bin"},
-	{"aw8697_reserved_365.bin"},
-	{"aw8697_reserved_366.bin"},
-	{"aw8697_reserved_367.bin"},
-	{"aw8697_reserved_368.bin"},
-	{"aw8697_reserved_369.bin"},
-	{"aw8697_reserved_370.bin"},
-
-	/* Add for OS14 Start */
-	{"aw8697_Nightsky_RTP_371_162Hz.bin"},
-	{"aw8697_TheStars_RTP_372_162Hz.bin"},
-	{"aw8697_TheSunrise_RTP_373_162Hz.bin"},
-	{"aw8697_TheSunset_RTP_374_162Hz.bin"},
-	{"aw8697_Meditate_RTP_375_162Hz.bin"},
-	{"aw8697_Distant_RTP_376_162Hz.bin"},
-	{"aw8697_Pond_RTP_377_162Hz.bin"},
-	{"aw8697_Moonlotus_RTP_378_162Hz.bin"},
-	{"aw8697_Ripplingwater_RTP_379_162Hz.bin"},
-	{"aw8697_Shimmer_RTP_380_162Hz.bin"},
-	{"aw8697_Batheearth_RTP_381_162Hz.bin"},
-	{"aw8697_Junglemorning_RTP_382_162Hz.bin"},
-	{"aw8697_Silver_RTP_383_162Hz.bin"},
-	{"aw8697_Elegantquiet_RTP_384_162Hz.bin"},
-	{"aw8697_Summerbeach_RTP_385_162Hz.bin"},
-	{"aw8697_Summernight_RTP_386_162Hz.bin"},
-	{"aw8697_Icesnow_RTP_387_162Hz.bin"},
-	{"aw8697_Wintersnow_RTP_388_162Hz.bin"},
-	{"aw8697_Rainforest_RTP_389_162Hz.bin"},
-	{"aw8697_Raineverything_RTP_390_162Hz.bin"},
-	{"aw8697_Staracross_RTP_391_162Hz.bin"},
-	{"aw8697_Fullmoon_RTP_392_162Hz.bin"},
-	{"aw8697_Clouds_RTP_393_162Hz.bin"},
-	{"aw8697_Wonderland_RTP_394_162Hz.bin"},
-	{"aw8697_Still_RTP_395_162Hz.bin"},
-	{"aw8697_Haunting_RTP_396_162Hz.bin"},
-	{"aw8697_Dragonfly_RTP_397_162Hz.bin"},
-	{"aw8697_Dropwater_RTP_398_162Hz.bin"},
-	{"aw8697_Fluctuation_RTP_399_162Hz.bin"},
-	{"aw8697_Blow_RTP_400_162Hz.bin"},
-	{"aw8697_Leaveslight_RTP_401_162Hz.bin"},
-	{"aw8697_Warmsun_RTP_402_162Hz.bin"},
-	{"aw8697_Snowflake_RTP_403_162Hz.bin"},
-	{"aw8697_Crystalclear_RTP_404_162Hz.bin"},
-	{"aw8697_Insects_RTP_405_162Hz.bin"},
-	{"aw8697_Dew_RTP_406_162Hz.bin"},
-	{"aw8697_Shine_RTP_407_162Hz.bin"},
-	{"aw8697_Frost_RTP_408_162Hz.bin"},
-	{"aw8697_Rainsplash_RTP_409_162Hz.bin"},
-	{"aw8697_Raindrop_RTP_410_162Hz.bin"},
-	/* Add for OS14 End */
 };
 
 static char aw_rtp_name_166Hz[][AW_RTP_NAME_MAX] = {
@@ -1383,99 +1290,6 @@ static char aw_rtp_name_166Hz[][AW_RTP_NAME_MAX] = {
 	{"480ms_RTP_319.bin"},
 	{"500ms_RTP_320.bin"},
 	{"AT500ms_RTP_321.bin"},
-
-	{"aw8697_reserved_322.bin"},
-	{"aw8697_reserved_323.bin"},
-	{"aw8697_reserved_324.bin"},
-	{"aw8697_reserved_325.bin"},
-	{"aw8697_reserved_326.bin"},
-	{"aw8697_reserved_327.bin"},
-	{"aw8697_reserved_328.bin"},
-	{"aw8697_reserved_329.bin"},
-	{"aw8697_reserved_330.bin"},
-	{"aw8697_reserved_331.bin"},
-	{"aw8697_reserved_332.bin"},
-	{"aw8697_reserved_333.bin"},
-	{"aw8697_reserved_334.bin"},
-	{"aw8697_reserved_335.bin"},
-	{"aw8697_reserved_336.bin"},
-	{"aw8697_reserved_337.bin"},
-	{"aw8697_reserved_338.bin"},
-	{"aw8697_reserved_339.bin"},
-	{"aw8697_reserved_340.bin"},
-	{"aw8697_reserved_341.bin"},
-	{"aw8697_reserved_342.bin"},
-	{"aw8697_reserved_343.bin"},
-	{"aw8697_reserved_344.bin"},
-	{"aw8697_reserved_345.bin"},
-	{"aw8697_reserved_346.bin"},
-	{"aw8697_reserved_347.bin"},
-	{"aw8697_reserved_348.bin"},
-	{"aw8697_reserved_349.bin"},
-	{"aw8697_reserved_350.bin"},
-	{"aw8697_reserved_351.bin"},
-	{"aw8697_reserved_352.bin"},
-	{"aw8697_reserved_353.bin"},
-	{"aw8697_reserved_354.bin"},
-	{"aw8697_reserved_355.bin"},
-	{"aw8697_reserved_356.bin"},
-	{"aw8697_reserved_357.bin"},
-	{"aw8697_reserved_358.bin"},
-	{"aw8697_reserved_359.bin"},
-	{"aw8697_reserved_360.bin"},
-	{"aw8697_reserved_361.bin"},
-	{"aw8697_reserved_362.bin"},
-	{"aw8697_programs_clean_RTP_363_166Hz.bin"},
-	{"aw8697_reserved_364.bin"},
-	{"aw8697_reserved_365.bin"},
-	{"aw8697_reserved_366.bin"},
-	{"aw8697_reserved_367.bin"},
-	{"aw8697_reserved_368.bin"},
-	{"aw8697_reserved_369.bin"},
-	{"aw8697_reserved_370.bin"},
-
-	/* Add for OS14 Start */
-	{"aw8697_Nightsky_RTP_371_166Hz.bin"},
-	{"aw8697_TheStars_RTP_372_166Hz.bin"},
-	{"aw8697_TheSunrise_RTP_373_166Hz.bin"},
-	{"aw8697_TheSunset_RTP_374_166Hz.bin"},
-	{"aw8697_Meditate_RTP_375_166Hz.bin"},
-	{"aw8697_Distant_RTP_376_166Hz.bin"},
-	{"aw8697_Pond_RTP_377_166Hz.bin"},
-	{"aw8697_Moonlotus_RTP_378_166Hz.bin"},
-	{"aw8697_Ripplingwater_RTP_379_166Hz.bin"},
-	{"aw8697_Shimmer_RTP_380_166Hz.bin"},
-	{"aw8697_Batheearth_RTP_381_166Hz.bin"},
-	{"aw8697_Junglemorning_RTP_382_166Hz.bin"},
-	{"aw8697_Silver_RTP_383_166Hz.bin"},
-	{"aw8697_Elegantquiet_RTP_384_166Hz.bin"},
-	{"aw8697_Summerbeach_RTP_385_166Hz.bin"},
-	{"aw8697_Summernight_RTP_386_166Hz.bin"},
-	{"aw8697_Icesnow_RTP_387_166Hz.bin"},
-	{"aw8697_Wintersnow_RTP_388_166Hz.bin"},
-	{"aw8697_Rainforest_RTP_389_166Hz.bin"},
-	{"aw8697_Raineverything_RTP_390_166Hz.bin"},
-	{"aw8697_Staracross_RTP_391_166Hz.bin"},
-	{"aw8697_Fullmoon_RTP_392_166Hz.bin"},
-	{"aw8697_Clouds_RTP_393_166Hz.bin"},
-	{"aw8697_Wonderland_RTP_394_166Hz.bin"},
-	{"aw8697_Still_RTP_395_166Hz.bin"},
-	{"aw8697_Haunting_RTP_396_166Hz.bin"},
-	{"aw8697_Dragonfly_RTP_397_166Hz.bin"},
-	{"aw8697_Dropwater_RTP_398_166Hz.bin"},
-	{"aw8697_Fluctuation_RTP_399_166Hz.bin"},
-	{"aw8697_Blow_RTP_400_166Hz.bin"},
-	{"aw8697_Leaveslight_RTP_401_166Hz.bin"},
-	{"aw8697_Warmsun_RTP_402_166Hz.bin"},
-	{"aw8697_Snowflake_RTP_403_166Hz.bin"},
-	{"aw8697_Crystalclear_RTP_404_166Hz.bin"},
-	{"aw8697_Insects_RTP_405_166Hz.bin"},
-	{"aw8697_Dew_RTP_406_166Hz.bin"},
-	{"aw8697_Shine_RTP_407_166Hz.bin"},
-	{"aw8697_Frost_RTP_408_166Hz.bin"},
-	{"aw8697_Rainsplash_RTP_409_166Hz.bin"},
-	{"aw8697_Raindrop_RTP_410_166Hz.bin"},
-	/* Add for OS14 End */
 };
 
 static char aw_rtp_name_174Hz[][AW_RTP_NAME_MAX] = {
@@ -1814,99 +1628,6 @@ static char aw_rtp_name_174Hz[][AW_RTP_NAME_MAX] = {
 	{"480ms_RTP_319.bin"},
 	{"500ms_RTP_320.bin"},
 	{"AT500ms_RTP_321.bin"},
-
-	{"aw8697_reserved_322.bin"},
-	{"aw8697_reserved_323.bin"},
-	{"aw8697_reserved_324.bin"},
-	{"aw8697_reserved_325.bin"},
-	{"aw8697_reserved_326.bin"},
-	{"aw8697_reserved_327.bin"},
-	{"aw8697_reserved_328.bin"},
-	{"aw8697_reserved_329.bin"},
-	{"aw8697_reserved_330.bin"},
-	{"aw8697_reserved_331.bin"},
-	{"aw8697_reserved_332.bin"},
-	{"aw8697_reserved_333.bin"},
-	{"aw8697_reserved_334.bin"},
-	{"aw8697_reserved_335.bin"},
-	{"aw8697_reserved_336.bin"},
-	{"aw8697_reserved_337.bin"},
-	{"aw8697_reserved_338.bin"},
-	{"aw8697_reserved_339.bin"},
-	{"aw8697_reserved_340.bin"},
-	{"aw8697_reserved_341.bin"},
-	{"aw8697_reserved_342.bin"},
-	{"aw8697_reserved_343.bin"},
-	{"aw8697_reserved_344.bin"},
-	{"aw8697_reserved_345.bin"},
-	{"aw8697_reserved_346.bin"},
-	{"aw8697_reserved_347.bin"},
-	{"aw8697_reserved_348.bin"},
-	{"aw8697_reserved_349.bin"},
-	{"aw8697_reserved_350.bin"},
-	{"aw8697_reserved_351.bin"},
-	{"aw8697_reserved_352.bin"},
-	{"aw8697_reserved_353.bin"},
-	{"aw8697_reserved_354.bin"},
-	{"aw8697_reserved_355.bin"},
-	{"aw8697_reserved_356.bin"},
-	{"aw8697_reserved_357.bin"},
-	{"aw8697_reserved_358.bin"},
-	{"aw8697_reserved_359.bin"},
-	{"aw8697_reserved_360.bin"},
-	{"aw8697_reserved_361.bin"},
-	{"aw8697_reserved_362.bin"},
-	{"aw8697_programs_clean_RTP_363_174Hz.bin"},
-	{"aw8697_reserved_364.bin"},
-	{"aw8697_reserved_365.bin"},
-	{"aw8697_reserved_366.bin"},
-	{"aw8697_reserved_367.bin"},
-	{"aw8697_reserved_368.bin"},
-	{"aw8697_reserved_369.bin"},
-	{"aw8697_reserved_370.bin"},
-
-	/* Add for OS14 Start */
-	{"aw8697_Nightsky_RTP_371_174Hz.bin"},
-	{"aw8697_TheStars_RTP_372_174Hz.bin"},
-	{"aw8697_TheSunrise_RTP_373_174Hz.bin"},
-	{"aw8697_TheSunset_RTP_374_174Hz.bin"},
-	{"aw8697_Meditate_RTP_375_174Hz.bin"},
-	{"aw8697_Distant_RTP_376_174Hz.bin"},
-	{"aw8697_Pond_RTP_377_174Hz.bin"},
-	{"aw8697_Moonlotus_RTP_378_174Hz.bin"},
-	{"aw8697_Ripplingwater_RTP_379_174Hz.bin"},
-	{"aw8697_Shimmer_RTP_380_174Hz.bin"},
-	{"aw8697_Batheearth_RTP_381_174Hz.bin"},
-	{"aw8697_Junglemorning_RTP_382_174Hz.bin"},
-	{"aw8697_Silver_RTP_383_174Hz.bin"},
-	{"aw8697_Elegantquiet_RTP_384_174Hz.bin"},
-	{"aw8697_Summerbeach_RTP_385_174Hz.bin"},
-	{"aw8697_Summernight_RTP_386_174Hz.bin"},
-	{"aw8697_Icesnow_RTP_387_174Hz.bin"},
-	{"aw8697_Wintersnow_RTP_388_174Hz.bin"},
-	{"aw8697_Rainforest_RTP_389_174Hz.bin"},
-	{"aw8697_Raineverything_RTP_390_174Hz.bin"},
-	{"aw8697_Staracross_RTP_391_174Hz.bin"},
-	{"aw8697_Fullmoon_RTP_392_174Hz.bin"},
-	{"aw8697_Clouds_RTP_393_174Hz.bin"},
-	{"aw8697_Wonderland_RTP_394_174Hz.bin"},
-	{"aw8697_Still_RTP_395_174Hz.bin"},
-	{"aw8697_Haunting_RTP_396_174Hz.bin"},
-	{"aw8697_Dragonfly_RTP_397_174Hz.bin"},
-	{"aw8697_Dropwater_RTP_398_174Hz.bin"},
-	{"aw8697_Fluctuation_RTP_399_174Hz.bin"},
-	{"aw8697_Blow_RTP_400_174Hz.bin"},
-	{"aw8697_Leaveslight_RTP_401_174Hz.bin"},
-	{"aw8697_Warmsun_RTP_402_174Hz.bin"},
-	{"aw8697_Snowflake_RTP_403_174Hz.bin"},
-	{"aw8697_Crystalclear_RTP_404_174Hz.bin"},
-	{"aw8697_Insects_RTP_405_174Hz.bin"},
-	{"aw8697_Dew_RTP_406_174Hz.bin"},
-	{"aw8697_Shine_RTP_407_174Hz.bin"},
-	{"aw8697_Frost_RTP_408_174Hz.bin"},
-	{"aw8697_Rainsplash_RTP_409_174Hz.bin"},
-	{"aw8697_Raindrop_RTP_410_174Hz.bin"},
-	/* Add for OS14 End */
 };
 
 static char aw_rtp_name_178Hz[][AW_RTP_NAME_MAX] = {
@@ -2247,99 +1968,6 @@ static char aw_rtp_name_178Hz[][AW_RTP_NAME_MAX] = {
 	{"480ms_RTP_319.bin"},
 	{"500ms_RTP_320.bin"},
 	{"AT500ms_RTP_321.bin"},
-
-	{"aw8697_reserved_322.bin"},
-	{"aw8697_reserved_323.bin"},
-	{"aw8697_reserved_324.bin"},
-	{"aw8697_reserved_325.bin"},
-	{"aw8697_reserved_326.bin"},
-	{"aw8697_reserved_327.bin"},
-	{"aw8697_reserved_328.bin"},
-	{"aw8697_reserved_329.bin"},
-	{"aw8697_reserved_330.bin"},
-	{"aw8697_reserved_331.bin"},
-	{"aw8697_reserved_332.bin"},
-	{"aw8697_reserved_333.bin"},
-	{"aw8697_reserved_334.bin"},
-	{"aw8697_reserved_335.bin"},
-	{"aw8697_reserved_336.bin"},
-	{"aw8697_reserved_337.bin"},
-	{"aw8697_reserved_338.bin"},
-	{"aw8697_reserved_339.bin"},
-	{"aw8697_reserved_340.bin"},
-	{"aw8697_reserved_341.bin"},
-	{"aw8697_reserved_342.bin"},
-	{"aw8697_reserved_343.bin"},
-	{"aw8697_reserved_344.bin"},
-	{"aw8697_reserved_345.bin"},
-	{"aw8697_reserved_346.bin"},
-	{"aw8697_reserved_347.bin"},
-	{"aw8697_reserved_348.bin"},
-	{"aw8697_reserved_349.bin"},
-	{"aw8697_reserved_350.bin"},
-	{"aw8697_reserved_351.bin"},
-	{"aw8697_reserved_352.bin"},
-	{"aw8697_reserved_353.bin"},
-	{"aw8697_reserved_354.bin"},
-	{"aw8697_reserved_355.bin"},
-	{"aw8697_reserved_356.bin"},
-	{"aw8697_reserved_357.bin"},
-	{"aw8697_reserved_358.bin"},
-	{"aw8697_reserved_359.bin"},
-	{"aw8697_reserved_360.bin"},
-	{"aw8697_reserved_361.bin"},
-	{"aw8697_reserved_362.bin"},
-	{"aw8697_programs_clean_RTP_363_178Hz.bin"},
-	{"aw8697_reserved_364.bin"},
-	{"aw8697_reserved_365.bin"},
-	{"aw8697_reserved_366.bin"},
-	{"aw8697_reserved_367.bin"},
-	{"aw8697_reserved_368.bin"},
-	{"aw8697_reserved_369.bin"},
-	{"aw8697_reserved_370.bin"},
-
-	/* Add for OS14 Start */
-	{"aw8697_Nightsky_RTP_371_178Hz.bin"},
-	{"aw8697_TheStars_RTP_372_178Hz.bin"},
-	{"aw8697_TheSunrise_RTP_373_178Hz.bin"},
-	{"aw8697_TheSunset_RTP_374_178Hz.bin"},
-	{"aw8697_Meditate_RTP_375_178Hz.bin"},
-	{"aw8697_Distant_RTP_376_178Hz.bin"},
-	{"aw8697_Pond_RTP_377_178Hz.bin"},
-	{"aw8697_Moonlotus_RTP_378_178Hz.bin"},
-	{"aw8697_Ripplingwater_RTP_379_178Hz.bin"},
-	{"aw8697_Shimmer_RTP_380_178Hz.bin"},
-	{"aw8697_Batheearth_RTP_381_178Hz.bin"},
-	{"aw8697_Junglemorning_RTP_382_178Hz.bin"},
-	{"aw8697_Silver_RTP_383_178Hz.bin"},
-	{"aw8697_Elegantquiet_RTP_384_178Hz.bin"},
-	{"aw8697_Summerbeach_RTP_385_178Hz.bin"},
-	{"aw8697_Summernight_RTP_386_178Hz.bin"},
-	{"aw8697_Icesnow_RTP_387_178Hz.bin"},
-	{"aw8697_Wintersnow_RTP_388_178Hz.bin"},
-	{"aw8697_Rainforest_RTP_389_178Hz.bin"},
-	{"aw8697_Raineverything_RTP_390_178Hz.bin"},
-	{"aw8697_Staracross_RTP_391_178Hz.bin"},
-	{"aw8697_Fullmoon_RTP_392_178Hz.bin"},
-	{"aw8697_Clouds_RTP_393_178Hz.bin"},
-	{"aw8697_Wonderland_RTP_394_178Hz.bin"},
-	{"aw8697_Still_RTP_395_178Hz.bin"},
-	{"aw8697_Haunting_RTP_396_178Hz.bin"},
-	{"aw8697_Dragonfly_RTP_397_178Hz.bin"},
-	{"aw8697_Dropwater_RTP_398_178Hz.bin"},
-	{"aw8697_Fluctuation_RTP_399_178Hz.bin"},
-	{"aw8697_Blow_RTP_400_178Hz.bin"},
-	{"aw8697_Leaveslight_RTP_401_178Hz.bin"},
-	{"aw8697_Warmsun_RTP_402_178Hz.bin"},
-	{"aw8697_Snowflake_RTP_403_178Hz.bin"},
-	{"aw8697_Crystalclear_RTP_404_178Hz.bin"},
-	{"aw8697_Insects_RTP_405_178Hz.bin"},
-	{"aw8697_Dew_RTP_406_178Hz.bin"},
-	{"aw8697_Shine_RTP_407_178Hz.bin"},
-	{"aw8697_Frost_RTP_408_178Hz.bin"},
-	{"aw8697_Rainsplash_RTP_409_178Hz.bin"},
-	{"aw8697_Raindrop_RTP_410_178Hz.bin"},
-	/* Add for OS14 End */
 };
 #endif
 
@@ -3029,98 +2657,6 @@ static char aw_rtp_name[][AW_RTP_NAME_MAX] = {
 	{"500ms_RTP_320.bin"},
 	{"AT500ms_RTP_321.bin"},
 
-	{"aw8697_reserved_322.bin"},
-	{"aw8697_reserved_323.bin"},
-	{"aw8697_reserved_324.bin"},
-	{"aw8697_reserved_325.bin"},
-	{"aw8697_reserved_326.bin"},
-	{"aw8697_reserved_327.bin"},
-	{"aw8697_reserved_328.bin"},
-	{"aw8697_reserved_329.bin"},
-	{"aw8697_reserved_330.bin"},
-	{"aw8697_reserved_331.bin"},
-	{"aw8697_reserved_332.bin"},
-	{"aw8697_reserved_333.bin"},
-	{"aw8697_reserved_334.bin"},
-	{"aw8697_reserved_335.bin"},
-	{"aw8697_reserved_336.bin"},
-	{"aw8697_reserved_337.bin"},
-	{"aw8697_reserved_338.bin"},
-	{"aw8697_reserved_339.bin"},
-	{"aw8697_reserved_340.bin"},
-	{"aw8697_reserved_341.bin"},
-	{"aw8697_reserved_342.bin"},
-	{"aw8697_reserved_343.bin"},
-	{"aw8697_reserved_344.bin"},
-	{"aw8697_reserved_345.bin"},
-	{"aw8697_reserved_346.bin"},
-	{"aw8697_reserved_347.bin"},
-	{"aw8697_reserved_348.bin"},
-	{"aw8697_reserved_349.bin"},
-	{"aw8697_reserved_350.bin"},
-	{"aw8697_reserved_351.bin"},
-	{"aw8697_reserved_352.bin"},
-	{"aw8697_reserved_353.bin"},
-	{"aw8697_reserved_354.bin"},
-	{"aw8697_reserved_355.bin"},
-	{"aw8697_reserved_356.bin"},
-	{"aw8697_reserved_357.bin"},
-	{"aw8697_reserved_358.bin"},
-	{"aw8697_reserved_359.bin"},
-	{"aw8697_reserved_360.bin"},
-	{"aw8697_reserved_361.bin"},
-	{"aw8697_reserved_362.bin"},
-	{"aw8697_programs_clean_RTP_363.bin"},
-	{"aw8697_reserved_364.bin"},
-	{"aw8697_reserved_365.bin"},
-	{"aw8697_reserved_366.bin"},
-	{"aw8697_reserved_367.bin"},
-	{"aw8697_reserved_368.bin"},
-	{"aw8697_reserved_369.bin"},
-	{"aw8697_reserved_370.bin"},
-
-	/* Add for OS14 Start */
-	{"aw8697_Nightsky_RTP_371.bin"},
-	{"aw8697_TheStars_RTP_372.bin"},
-	{"aw8697_TheSunrise_RTP_373.bin"},
-	{"aw8697_TheSunset_RTP_374.bin"},
-	{"aw8697_Meditate_RTP_375.bin"},
-	{"aw8697_Distant_RTP_376.bin"},
-	{"aw8697_Pond_RTP_377.bin"},
-	{"aw8697_Moonlotus_RTP_378.bin"},
-	{"aw8697_Ripplingwater_RTP_379.bin"},
-	{"aw8697_Shimmer_RTP_380.bin"},
-	{"aw8697_Batheearth_RTP_381.bin"},
-	{"aw8697_Junglemorning_RTP_382.bin"},
-	{"aw8697_Silver_RTP_383.bin"},
-	{"aw8697_Elegantquiet_RTP_384.bin"},
-	{"aw8697_Summerbeach_RTP_385.bin"},
-	{"aw8697_Summernight_RTP_386.bin"},
-	{"aw8697_Icesnow_RTP_387.bin"},
-	{"aw8697_Wintersnow_RTP_388.bin"},
-	{"aw8697_Rainforest_RTP_389.bin"},
-	{"aw8697_Raineverything_RTP_390.bin"},
-	{"aw8697_Staracross_RTP_391.bin"},
-	{"aw8697_Fullmoon_RTP_392.bin"},
-	{"aw8697_Clouds_RTP_393.bin"},
-	{"aw8697_Wonderland_RTP_394.bin"},
-	{"aw8697_Still_RTP_395.bin"},
-	{"aw8697_Haunting_RTP_396.bin"},
-	{"aw8697_Dragonfly_RTP_397.bin"},
-	{"aw8697_Dropwater_RTP_398.bin"},
-	{"aw8697_Fluctuation_RTP_399.bin"},
-	{"aw8697_Blow_RTP_400.bin"},
-	{"aw8697_Leaveslight_RTP_401.bin"},
-	{"aw8697_Warmsun_RTP_402.bin"},
-	{"aw8697_Snowflake_RTP_403.bin"},
-	{"aw8697_Crystalclear_RTP_404.bin"},
-	{"aw8697_Insects_RTP_405.bin"},
-	{"aw8697_Dew_RTP_406.bin"},
-	{"aw8697_Shine_RTP_407.bin"},
-	{"aw8697_Frost_RTP_408.bin"},
-	{"aw8697_Rainsplash_RTP_409.bin"},
-	{"aw8697_Raindrop_RTP_410.bin"},
-	/* Add for OS14 End */
 };
 
 #ifndef KERNEL_VERSION_510
@@ -4141,9 +3677,6 @@ static int container_init(int size)
  * I2C Read/Write
  *
  *********************************************************/
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 int i2c_r_bytes(struct aw_haptic *aw_haptic, uint8_t reg_addr, uint8_t *buf,
 		uint32_t len)
 {
@@ -4178,9 +3711,6 @@ int i2c_r_bytes(struct aw_haptic *aw_haptic, uint8_t reg_addr, uint8_t *buf,
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 int i2c_w_bytes(struct aw_haptic *aw_haptic, uint8_t reg_addr, uint8_t *buf,
 		uint32_t len)
 {
@@ -4258,7 +3788,6 @@ static int parse_vibrate_param_dts(struct device *dev, struct aw_haptic *aw_hapt
 			 struct device_node *np)
 {
 #ifdef OPLUS_FEATURE_CHG_BASIC
-
 	int max_boost_voltage = 0;
 	uint8_t vmax[VMAX_GAIN_NUM];
 	uint8_t gain[VMAX_GAIN_NUM];
@@ -4273,26 +3802,26 @@ static int parse_vibrate_param_dts(struct device *dev, struct aw_haptic *aw_hapt
 		aw_dev_info("%s: aw86907 boost_voltage=%d\n", __func__, AW86927_HAPTIC_HIGH_LEVEL_REG_VAL);
 
 		val = of_property_read_u8_array(np, "haptic_hv_aw86907_vmax",
-							vmax, ARRAY_SIZE(vmax));
+						vmax, ARRAY_SIZE(vmax));
 		if (val != 0) {
-			aw_dev_info("aw_haptic_aw86907_vmax not found");
+			aw_dev_info("aw_haptic_aw86907_vmax not found\n");
 		} else {
 			for (i = 0; i < ARRAY_SIZE(vmax); i++) {
 				vmax_map[i].vmax = vmax[i];
-				aw_dev_info("_aw86907 vmax_map vmax: 0x%x vmax: 0x%x", vmax_map[i].vmax, vmax[i]);
+				aw_dev_info("_aw86907 vmax_map vmax: 0x%x vmax: 0x%x\n", vmax_map[i].vmax, vmax[i]);
 			}
 		}
 		val = of_property_read_u8_array(np, "haptic_hv_aw86907_gain",
-							gain, ARRAY_SIZE(gain));
+						gain, ARRAY_SIZE(gain));
 		if (val != 0) {
-			aw_dev_info("aw_haptic_aw86907_gain not found");
+			aw_dev_info("aw_haptic_aw86907_gain not found\n");
 		} else {
 			for (i = 0; i < ARRAY_SIZE(gain); i++) {
 				vmax_map[i].gain = gain[i];
-				aw_dev_info("_aw86907 vmax_map gain: 0x%x gain: 0x%x", vmax_map[i].gain, gain[i]);
+				aw_dev_info("_aw86907 vmax_map gain: 0x%x gain: 0x%x\n", vmax_map[i].gain, gain[i]);
 			}
 		}
-	}else {
+	} else {
 		if (of_property_read_u32(np, "oplus,aw86927_boost_voltage", &max_boost_voltage))
 			AW86927_HAPTIC_HIGH_LEVEL_REG_VAL = DEFAULT_BOOST_VOLT; /* boost 8.4V */
 		else
@@ -4300,23 +3829,23 @@ static int parse_vibrate_param_dts(struct device *dev, struct aw_haptic *aw_hapt
 		aw_dev_info("%s: aw86927 boost_voltage=%d\n", __func__, AW86927_HAPTIC_HIGH_LEVEL_REG_VAL);
 
 		val = of_property_read_u8_array(np, "haptic_hv_vmax",
-							vmax, ARRAY_SIZE(vmax));
+						vmax, ARRAY_SIZE(vmax));
 		if (val != 0) {
-			aw_dev_info("aw_haptic_vmax not found");
+			aw_dev_info("aw_haptic_vmax not found\n");
 		} else {
 			for (i = 0; i < ARRAY_SIZE(vmax); i++) {
 				vmax_map[i].vmax = vmax[i];
-				aw_dev_info("vmax_map vmax: 0x%x vmax: 0x%x", vmax_map[i].vmax, vmax[i]);
+				aw_dev_info("vmax_map vmax: 0x%x vmax: 0x%x\n", vmax_map[i].vmax, vmax[i]);
 			}
 		}
 		val = of_property_read_u8_array(np, "haptic_hv_gain",
-							gain, ARRAY_SIZE(gain));
+						gain, ARRAY_SIZE(gain));
 		if (val != 0) {
-			aw_dev_info("aw_haptic_gain not found");
+			aw_dev_info("aw_haptic_gain not found\n");
 		} else {
 			for (i = 0; i < ARRAY_SIZE(gain); i++) {
 				vmax_map[i].gain = gain[i];
-				aw_dev_info("vmax_map gain: 0x%x gain: 0x%x", vmax_map[i].gain, gain[i]);
+				aw_dev_info("vmax_map gain: 0x%x gain: 0x%x\n", vmax_map[i].gain, gain[i]);
 			}
 		}
 	}
@@ -5040,9 +4569,6 @@ static void rtp_trim_lra_cali(struct aw_haptic *aw_haptic)
 	}
 }
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_AW8692X)
-noinline
-#endif
 static int rtp_osc_cali(struct aw_haptic *aw_haptic)
 {
 	uint32_t buf_len = 0;
@@ -5630,14 +5156,6 @@ static void rtp_work_routine(struct work_struct *work)
 	aw_haptic->func->set_rtp_aei(aw_haptic, false);
 	aw_haptic->func->irq_clear(aw_haptic);
 	aw_haptic->func->play_stop(aw_haptic);
-
-	if (aw_haptic->rtp_file_num == AW_WAVEFORM_INDEX_ZERO) {
-		aw_haptic->rtp_init = false;
-		op_clean_status(aw_haptic);
-		aw_dev_info("%s: vibrator stopped \n", __func__);
-		mutex_unlock(&aw_haptic->lock);
-		return;
-	}
 	/* gain */
 	ram_vbat_comp(aw_haptic, false);
 	/* boost voltage */
@@ -6534,7 +6052,6 @@ static ssize_t rtp_store(struct device *dev, struct device_attribute *attr,
 		|| (val >=  OPLUS_RING_START && val <= OPLUS_RING_END)
 		|| (val >=  OPLUS_NEW_RING_1_START && val <= OPLUS_NEW_RING_1_END)
 		|| (val >=  OPLUS_NEW_RING_2_START && val <= OPLUS_NEW_RING_2_END)
-		|| (val >=  OS14_NEW_RING_START && val <= OS14_NEW_RING_END)
 		|| val == RINGTONES_SIMPLE_INDEX
 		|| val == RINGTONES_PURE_INDEX
 		|| val == AUDIO_READY_STATUS)) {
@@ -8403,7 +7920,6 @@ static void rtp_work_proc(struct work_struct *work)
 				aw_haptic->func->set_rtp_aei(aw_haptic, false);
 				aw_haptic->haptic_rtp_mode = false;
 				aw_dev_err("%s: failed to enter RTP_GO status!\n", __func__);
-				mutex_unlock(&aw_haptic->lock);
 				return;
 			}
 			mutex_unlock(&aw_haptic->lock);
@@ -8627,7 +8143,6 @@ static long aw_file_unlocked_ioctl(struct file *file, unsigned int cmd,
 		else
 			aw_haptic->func->set_bst_vol(aw_haptic, 0x4F);//boost 8.414V
 
-		aw_haptic->func->upload_lra(aw_haptic, AW_OSC_CALI_LRA);
 		schedule_work(&aw_haptic->haptic_rtp_work);
 		break;
 	case RICHTAP_STOP_MODE:

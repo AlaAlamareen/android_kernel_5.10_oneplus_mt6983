@@ -508,6 +508,8 @@ static struct mtk_panel_params ext_params = {
 	.lcm_esd_check_table[3] = {
 		.cmd = 0x03, .count = 1, .para_list[0] = 0x01,
 	},
+	.cmd_null_pkt_en = 1,
+	.cmd_null_pkt_len = 200,
 	.skip_unnecessary_switch = true,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
@@ -582,6 +584,8 @@ static struct mtk_panel_params ext_params_90hz = {
 	.lcm_esd_check_table[3] = {
 		.cmd = 0x03, .count = 1, .para_list[0] = 0x01,
 	},
+	.cmd_null_pkt_en = 1,
+	.cmd_null_pkt_len = 200,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.skip_unnecessary_switch = true,
 	.dsc_params = {
@@ -661,12 +665,6 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-
-	if (!m) {
-		pr_err("%s:%d invalid display_mode\n", __func__, __LINE__);
-		return ret;
-	}
-
 	printk(" mtk_panel_ext_param_set enter \n");
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;
@@ -735,11 +733,6 @@ static int mode_switch(struct drm_panel *panel,
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
 	struct lcm *ctx = panel_to_lcm(panel);
-
-	if (!m) {
-		pr_err("%s invalid drm_display_mode\n", __func__);
-		return 1;
-	}
 
 	if (cur_mode == dst_mode)
 		return ret;
@@ -1434,31 +1427,7 @@ static struct mipi_dsi_driver lcm_driver = {
 	},
 };
 
-static int __init lcm_drv_init(void)
-{
-	int ret = 0;
-
-	DISP_INFO("start\n");
-	mtk_panel_lock();
-	ret = mipi_dsi_driver_register(&lcm_driver);
-	if (ret < 0)
-		DISP_ERR("Failed to register jdi driver: %d\n",ret);
-
-	mtk_panel_unlock();
-	DISP_INFO("end ret=%d\n",ret);
-	return 0;
-}
-
-static void __exit lcm_drv_exit(void)
-{
-	DISP_INFO("start\n");
-	mtk_panel_lock();
-	mipi_dsi_driver_unregister(&lcm_driver);
-	mtk_panel_unlock();
-	DISP_INFO("end\n");
-}
-module_init(lcm_drv_init);
-module_exit(lcm_drv_exit);
+module_mipi_dsi_driver(lcm_driver);
 
 MODULE_AUTHOR("Yi-Lun Wang <Yi-Lun.Wang@mediatek.com>");
 MODULE_DESCRIPTION("oplus22281_samsung_ams643ag01_1080p_dsi_cmd CMD LCD Panel Driver");

@@ -339,10 +339,6 @@
 	qcom,usbtemp_cool_down_recover_ntc_high = <60>;
 	qcom,usbtemp_cool_down_recover_gap_low = <6>;
 	qcom,usbtemp_cool_down_recover_gap_high = <15>;
-	oplus,poweroff_high_batt_temp = <720>;
-	oplus,poweroff_emergency_batt_temp = <770>;
-	oplus,usbtemp_batt_temp_over_hot = <60>;
-	oplus,usbtemp_temp_gap_with_batt_temp_in_over_hot = <15>;
 
 	voocphy_support_display_vooc;
 };
@@ -398,11 +394,6 @@
 
 	feedback_fb: feedback_fb {
 		compatible = "oplus,haptic-feedback";
-	};
-
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
 	};
 };
 
@@ -664,8 +655,6 @@
 		status = "okay";
 		compatible = "chip,hl7138-standalone";
 		reg = <0x67>;
-                ovp_reg = <0x3C>;
-                reg_ctrl_1 = <0xFC>;
 
 		qcom,irq_gpio = <&pio 149 0x00>;
 		interrupt-parent = <&pio>;
@@ -760,7 +749,6 @@
 		qcom,voocphy_current_change_timeout = <100>;
 
 		qcom,high_curr_setting;
-		oplus,workaround_for_100w;
 
 		svooc_batt_sys_curve = <0 1 0 1 0 0 0	// 4000mA
 					0 0 0 0 0 0 1	// 3414mV
@@ -1166,8 +1154,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-	over_high_temp_thr = <60>;
-	high-temp-scheme;
 };
 
 /*&phy_tuning {

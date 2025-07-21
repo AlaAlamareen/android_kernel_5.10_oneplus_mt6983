@@ -1900,10 +1900,6 @@
 };
 
 &soc {
-	oplus_battery_log: oplus,battery_log {
-		compatible = "oplus,battery_log";
-		oplus,battery_log_support;
-	};
 	oplus_chg_comm: oplus,common-charge {
 		status = "ok";
 		compatible = "oplus,common-charge";
@@ -2196,7 +2192,6 @@
 &lk_charger {
 	charger_by_buckboost;
 	support_tuv_authentication;
-        support_sdp_screenoff;
 	charger_no_wiress;
 
 	led_brightness = <102>;
@@ -2209,7 +2204,6 @@
 	charging_host_charger_current = <1500000>;
 	ta_ac_charger_current = <1500000>;
 	pd_charger_current = <500000>;
-        en_vol_ctrl_vibrate = <3200>;
 };
 
 /*&phy_tuning {

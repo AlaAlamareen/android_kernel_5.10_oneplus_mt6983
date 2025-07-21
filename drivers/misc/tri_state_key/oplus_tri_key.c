@@ -119,28 +119,27 @@ int oplus_hall_enable_irq(unsigned int id, bool enable)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-			!g_the_chip->dhall_down_ops->enable_irq) {
+			!g_the_chip->dhall_down_ops->enable_irq)
 			TRI_KEY_ERR("enable hall0 irq error\n");
-		} else {
+		else {
 			oplus_hall_clear_irq(DHALL_0);
 			oplus_hall_clear_irq(DHALL_1);
 			return g_the_chip->dhall_down_ops->enable_irq(enable);
 		}
-		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-			!g_the_chip->dhall_up_ops->enable_irq) {
+			!g_the_chip->dhall_up_ops->enable_irq)
 			TRI_KEY_ERR("enable hall1 irq error\n");
-		} else {
+		else {
 			oplus_hall_clear_irq(DHALL_0);
 			oplus_hall_clear_irq(DHALL_1);
 			return g_the_chip->dhall_up_ops->enable_irq(enable);
 		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
+
 	return -EINVAL;
 }
 
@@ -153,24 +152,22 @@ int oplus_hall_clear_irq(unsigned int id)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-			!g_the_chip->dhall_down_ops->enable_irq) {
+			!g_the_chip->dhall_down_ops->enable_irq)
 			return -EINVAL;
-		} else {
+		else
 			return g_the_chip->dhall_down_ops->clear_irq();
-		}
-		break;
+
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-			!g_the_chip->dhall_up_ops->enable_irq) {
+			!g_the_chip->dhall_up_ops->enable_irq)
 			return -EINVAL;
-		} else {
+		else
 			return g_the_chip->dhall_up_ops->clear_irq();
-		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
+
 	return -EINVAL;
 }
 
@@ -182,29 +179,26 @@ int oplus_hall_get_data(unsigned int id)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-				!g_the_chip->dhall_down_ops->get_data) {
+				!g_the_chip->dhall_down_ops->get_data)
 			TRI_KEY_ERR("get hall0 data error\n");
-		} else {
+		else {
 			g_the_chip->dhall_down_ops->get_data(
 				&g_the_chip->dhall_data0);
 			return true;
 		}
-		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-				!g_the_chip->dhall_up_ops->get_data) {
+				!g_the_chip->dhall_up_ops->get_data)
 			TRI_KEY_ERR("get hall1 data error\n");
-		} else {
+		else {
 			g_the_chip->dhall_up_ops->get_data(
 				&g_the_chip->dhall_data1);
 			return true;
 		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
-	return -EINVAL;
 }
 
 bool oplus_hall_update_threshold(unsigned int id, int position,
@@ -216,29 +210,26 @@ bool oplus_hall_update_threshold(unsigned int id, int position,
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-				!g_the_chip->dhall_down_ops->update_threshold) {
+				!g_the_chip->dhall_down_ops->update_threshold)
 			TRI_KEY_ERR("update hall0 threshold error\n");
-		} else {
+		else {
 			g_the_chip->dhall_down_ops->update_threshold(position,
 					lowthd, highthd);
 			return true;
 		}
-		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-			!g_the_chip->dhall_up_ops->update_threshold) {
+			!g_the_chip->dhall_up_ops->update_threshold)
 			TRI_KEY_ERR("update hall1 threshold error\n");
-		} else {
+		else {
 			g_the_chip->dhall_up_ops->update_threshold(position,
 					lowthd, highthd);
 			return true;
 		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
-	return -EINVAL;
 }
 
 int oplus_hall_set_detection_mode(unsigned int id, u8 mode)
@@ -249,27 +240,24 @@ int oplus_hall_set_detection_mode(unsigned int id, u8 mode)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-				!g_the_chip->dhall_down_ops->set_detection_mode) {
+				!g_the_chip->dhall_down_ops->set_detection_mode)
 			TRI_KEY_ERR("set hall 0 error\n");
-		} else {
+		else {
 			g_the_chip->dhall_down_ops->set_detection_mode(mode);
 			return true;
 		}
-		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-				!g_the_chip->dhall_up_ops->set_detection_mode) {
+				!g_the_chip->dhall_up_ops->set_detection_mode)
 			TRI_KEY_ERR("set error\n");
-		} else {
+		else {
 			g_the_chip->dhall_up_ops->set_detection_mode(mode);
 			return true;
 		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
-	return -EINVAL;
 }
 
 int oplus_hall_get_irq_state(unsigned int id)
@@ -280,25 +268,20 @@ int oplus_hall_get_irq_state(unsigned int id)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-				!g_the_chip->dhall_down_ops->get_irq_state) {
+				!g_the_chip->dhall_down_ops->get_irq_state)
 			return -EINVAL;
-		} else {
+		else
 			return g_the_chip->dhall_down_ops->get_irq_state();
-		}
-		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-				!g_the_chip->dhall_up_ops->get_irq_state) {
+				!g_the_chip->dhall_up_ops->get_irq_state)
 			return -EINVAL;
-		} else {
+		else
 			return g_the_chip->dhall_up_ops->get_irq_state();
-		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
-	return -EINVAL;
 }
 
 
@@ -311,19 +294,17 @@ void oplus_hall_dump_regs(unsigned int id, u8 *buf)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-				!g_the_chip->dhall_down_ops->dump_regs) {
+				!g_the_chip->dhall_down_ops->dump_regs)
 			TRI_KEY_ERR("dump hall0 error\n");
-		} else {
+		else
 			g_the_chip->dhall_down_ops->dump_regs(buf);
-		}
 		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-				!g_the_chip->dhall_up_ops->dump_regs) {
+				!g_the_chip->dhall_up_ops->dump_regs)
 			TRI_KEY_ERR("dump hall1 error\n");
-		} else {
+		else
 			g_the_chip->dhall_up_ops->dump_regs(buf);
-		}
 		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
@@ -339,25 +320,20 @@ int oplus_hall_set_reg(unsigned int id, int reg, int val)
 	switch (id) {
 	case DHALL_0:
 		if (!g_the_chip->dhall_down_ops ||
-				!g_the_chip->dhall_down_ops->set_reg) {
+				!g_the_chip->dhall_down_ops->set_reg)
 			return -EINVAL;
-		} else {
+		else
 			return g_the_chip->dhall_down_ops->set_reg(reg, val);
-		}
-		break;
 	case DHALL_1:
 		if (!g_the_chip->dhall_up_ops ||
-				!g_the_chip->dhall_up_ops->set_reg) {
+				!g_the_chip->dhall_up_ops->set_reg)
 			return -EINVAL;
-		} else {
+		else
 			return g_the_chip->dhall_up_ops->set_reg(reg, val);
-		}
-		break;
 	default:
 		TRI_KEY_ERR("id : %d is not correct\n", id);
 		return -EINVAL;
 	}
-	return -EINVAL;
 }
 
 bool oplus_hall_is_power_on(void)
@@ -739,10 +715,7 @@ static int reupdata_threshold(struct extcon_dev_data *chip)
 		oplus_hall_clear_irq(DHALL_0);
 		oplus_hall_clear_irq(DHALL_1);
 		break;
-	default:
-		break;
-	}
-
+		}
 fail:
 	last_d0 = chip->dhall_data0;
 	last_d1 = chip->dhall_data1;

@@ -772,12 +772,6 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-
-	if (!m) {
-		pr_err("%s:%d invalid display_mode\n", __func__, __LINE__);
-		return ret;
-	}
-
 	printk(" mtk_panel_ext_param_set enter \n");
 	if (drm_mode_vrefresh(m) == 60)
 		ext->params = &ext_params;

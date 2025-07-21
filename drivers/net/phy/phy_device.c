@@ -1423,7 +1423,6 @@ error:
 
 error_module_put:
 	module_put(d->driver->owner);
-	d->driver = NULL;
 error_put_device:
 	put_device(d);
 	if (ndev_owner != bus->owner)
@@ -2833,6 +2832,8 @@ static int phy_probe(struct device *dev)
 	if (phydrv->flags & PHY_IS_INTERNAL)
 		phydev->is_internal = true;
 
+	mutex_lock(&phydev->lock);
+
 	/* Deassert the reset signal */
 	phy_device_reset(phydev, 0);
 
@@ -2901,9 +2902,11 @@ static int phy_probe(struct device *dev)
 	phydev->state = PHY_READY;
 
 out:
-	/* Re-assert the reset signal on error */
+	/* Assert the reset signal */
 	if (err)
 		phy_device_reset(phydev, 1);
+
+	mutex_unlock(&phydev->lock);
 
 	return err;
 }
@@ -2914,7 +2917,9 @@ static int phy_remove(struct device *dev)
 
 	cancel_delayed_work_sync(&phydev->state_queue);
 
+	mutex_lock(&phydev->lock);
 	phydev->state = PHY_DOWN;
+	mutex_unlock(&phydev->lock);
 
 	sfp_bus_del_upstream(phydev->sfp_bus);
 	phydev->sfp_bus = NULL;
@@ -3024,30 +3029,23 @@ static int __init phy_init(void)
 {
 	int rc;
 
-	ethtool_set_ethtool_phy_ops(&phy_ethtool_phy_ops);
-
 	rc = mdio_bus_init();
 	if (rc)
-		goto err_ethtool_phy_ops;
+		return rc;
 
+	ethtool_set_ethtool_phy_ops(&phy_ethtool_phy_ops);
 	features_init();
 
 	rc = phy_driver_register(&genphy_c45_driver, THIS_MODULE);
 	if (rc)
-		goto err_mdio_bus;
-
-	rc = phy_driver_register(&genphy_driver, THIS_MODULE);
-	if (rc)
 		goto err_c45;
 
-	return 0;
-
+	rc = phy_driver_register(&genphy_driver, THIS_MODULE);
+	if (rc) {
+		phy_driver_unregister(&genphy_c45_driver);
 err_c45:
-	phy_driver_unregister(&genphy_c45_driver);
-err_mdio_bus:
-	mdio_bus_exit();
-err_ethtool_phy_ops:
-	ethtool_set_ethtool_phy_ops(NULL);
+		mdio_bus_exit();
+	}
 
 	return rc;
 }

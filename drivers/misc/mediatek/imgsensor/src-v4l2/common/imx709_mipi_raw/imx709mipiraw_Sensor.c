@@ -64,10 +64,6 @@
 #define imx709_seq_write_cmos_sensor(...) subdrv_i2c_wr_seq_p8(__VA_ARGS__)
 
 #define _I2C_BUF_SIZE 256
-
-//add for ITS--sensor_fusion,Modify for OFFSET
-#define DOMESTIC_OFFSET 1922000
-
 static kal_uint16 _i2c_data[_I2C_BUF_SIZE];
 static unsigned int _size_to_write;
 
@@ -2452,7 +2448,7 @@ static int feature_control(struct subdrv_ctx *ctx, MSDK_SENSOR_FEATURE_ENUM feat
 
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = DOMESTIC_OFFSET;
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 3122000;
 		break;
 	case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ_BY_SCENARIO:
         switch (*feature_data) {

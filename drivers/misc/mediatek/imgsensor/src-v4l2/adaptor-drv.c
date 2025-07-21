@@ -17,9 +17,7 @@
 #include "adaptor-hw.h"
 #include "adaptor-i2c.h"
 #include "adaptor-ctrls.h"
-#include "adaptor-fsync-ctrls.h"
 #include "adaptor-ioctl.h"
-#include "adaptor-trace.h"
 #include "imgsensor-glue/imgsensor-glue.h"
 #include "virt-sensor/virt-sensor-entry.h"
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
@@ -406,6 +404,7 @@ static int imgsensor_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	dev_info(ctx->dev, "%s use self ref cnt\n", __func__);
 	adaptor_hw_power_on(ctx);
 #endif
+
 	adaptor_sensor_init(ctx);
 #endif
 
@@ -606,17 +605,77 @@ static int imgsensor_set_pad_format(struct v4l2_subdev *sd,
 		ctx->try_format_mode = mode;
 	} else {
 #ifndef POWERON_ONCE_OPENED
-		ADAPTOR_SYSTRACE_BEGIN("imgsensor::init_sensor");
 		adaptor_sensor_init(ctx);
-		ADAPTOR_SYSTRACE_END();
 #endif
-		ADAPTOR_SYSTRACE_BEGIN("imgsensor::set_mode_%u", mode->id);
 		set_sensor_mode(ctx, mode, 1);
-		ADAPTOR_SYSTRACE_END();
 	}
 	mutex_unlock(&ctx->mutex);
 
 	return 0;
+}
+
+static u32 get_sensor_sync_mode(struct adaptor_ctx *ctx)
+{
+	u32 sync_mode = 0;
+	union feature_para para;
+	u32 len;
+
+	para.u32[0] = 0;
+
+	subdrv_call(ctx, feature_control,
+		SENSOR_FEATURE_GET_SENSOR_SYNC_MODE,
+		para.u8, &len);
+
+	sync_mode = para.u32[0];
+
+	dev_info(ctx->dev, "sync mode = %u\n", sync_mode);
+
+	return sync_mode;
+}
+
+/* notify frame-sync streaming ON/OFF and set sensor info to frame-sync */
+static void notify_fsync_mgr_streaming(struct adaptor_ctx *ctx,
+				unsigned int flag)
+{
+	unsigned int ret = 0;
+	struct fs_streaming_st streaming_sensor_info = {0};
+
+	streaming_sensor_info.sensor_id = ctx->subdrv->id;
+	streaming_sensor_info.sensor_idx = ctx->idx;
+
+	/* fsync_map_id is cam_mux no */
+	streaming_sensor_info.tg = ctx->fsync_map_id->val + 1;
+	streaming_sensor_info.fl_active_delay =
+				ctx->subctx.frame_time_delay_frame;
+
+
+	/* using ctx->subctx.frame_length instead of ctx->cur_mode->fll */
+	/*     for any settings before streaming on */
+	streaming_sensor_info.def_fl_lc = ctx->subctx.frame_length;
+	streaming_sensor_info.max_fl_lc = ctx->subctx.max_frame_length;
+
+	/* frame sync sensor operate mode. none/master/slave */
+	streaming_sensor_info.sync_mode = get_sensor_sync_mode(ctx);
+
+
+	/* using ctx->subctx.shutter instead of ctx->subctx.exposure_def */
+	/*     for any settings before streaming on */
+	streaming_sensor_info.def_shutter_lc = ctx->subctx.shutter;
+
+
+	/* callback data */
+	streaming_sensor_info.func_ptr = cb_fsync_mgr_set_framelength;
+	streaming_sensor_info.p_ctx = ctx;
+
+
+	/* call frame-sync streaming ON/OFF */
+	if (ctx->fsync_mgr != NULL) {
+		ret = ctx->fsync_mgr->fs_streaming(flag, &streaming_sensor_info);
+
+		if (ret != 0)
+			dev_info(ctx->dev, "frame-sync streaming ERROR!\n");
+	} else
+		dev_info(ctx->dev, "frame-sync is not init!\n");
 }
 
 #ifdef IMGSENSOR_USE_PM_FRAMEWORK
@@ -991,6 +1050,58 @@ static const struct thermal_zone_of_device_ops imgsensor_tz_ops = {
 	.get_temp = imgsensor_get_temp,
 };
 
+static int notify_fsync_mgr(struct adaptor_ctx *ctx, int on)
+{
+	int ret, seninf_idx = 0;
+	const char *seninf_port = NULL;
+	char c_ab;
+	struct device_node *seninf_np;
+	struct device *dev = ctx->dev;
+
+	if (!on) {
+		/* imgsensor remove => for remove sysfs file */
+		FrameSyncUnInit(ctx->dev);
+		return 0;
+	}
+
+	seninf_np = of_graph_get_remote_node(dev->of_node, 0, 0);
+	if (!seninf_np) {
+		dev_info(dev, "no remote device node\n");
+		return -EINVAL;
+	}
+
+	ret = of_property_read_string(seninf_np, "csi-port", &seninf_port);
+
+	of_node_put(seninf_np);
+
+	if (ret || !seninf_port) {
+		dev_info(dev, "no seninf csi-port\n");
+		return -EINVAL;
+	}
+
+	/* convert seninf-port to seninf-idx */
+	ret = sscanf(seninf_port, "%d%c", &seninf_idx, &c_ab);
+	seninf_idx <<= 1;
+	seninf_idx += (ret == 2 && (c_ab == 'b' || c_ab == 'B'));
+
+	dev_info(dev, "sensor_idx %d seninf_port %s seninf_idx %d\n",
+		ctx->idx, seninf_port, seninf_idx);
+
+	/* frame-sync init */
+	ret = FrameSyncInit(&ctx->fsync_mgr, ctx->dev);
+	if (ret != 0) {
+		dev_info(ctx->dev, "frame-sync init failed !\n");
+		ctx->fsync_mgr = NULL;
+	} else
+		dev_info(dev, "frame-sync init done, ret:%d", ret);
+
+	/* notify frame-sync mgr of sensor-idx and seninf-idx */
+	//TODO
+
+	return 0;
+}
+
+
 #define SHOW(buf, len, fmt, ...) { \
 	len += snprintf(buf + len, PAGE_SIZE - len, fmt, ##__VA_ARGS__); \
 }
@@ -1170,7 +1281,6 @@ static int imgsensor_probe(struct i2c_client *client)
 	dev_dbg(ctx->dev, "%s support_explorer_aon_fl:%d\n", __func__, ctx->support_explorer_aon_fl);
 	ctx->aon_irq_gpio = of_get_named_gpio(dev->of_node, "aon-irq-gpio", 0);
 	dev_dbg(dev, "parsing dtsi aon_irq_gpio = %d", ctx->aon_irq_gpio);
-	mutex_init(&ctx->hw_mutex);
 #endif
 
 	endpoint = of_graph_get_next_endpoint(dev->of_node, NULL);
@@ -1302,9 +1412,7 @@ free_entity:
 free_ctrl:
 	v4l2_ctrl_handler_free(&ctx->ctrls);
 	mutex_destroy(&ctx->mutex);
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	mutex_destroy(&ctx->hw_mutex);
-#endif
+
 	return ret;
 }
 
@@ -1332,9 +1440,6 @@ static int imgsensor_remove(struct i2c_client *client)
 
 	mutex_destroy(&ctx->mutex);
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	mutex_destroy(&ctx->hw_mutex);
-#endif
 	return 0;
 }
 

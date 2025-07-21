@@ -175,7 +175,6 @@ obj-$(CONFIG_REGULATOR_WM8400) += wm8400-regulator.o
 obj-$(CONFIG_REGULATOR_WM8994) += wm8994-regulator.o
 obj-$(CONFIG_PMIC_FAN53870) += fan53870-regulator.o
 obj-$(CONFIG_REGULATOR_WL2868C) += wl2868c-regulator.o
-obj-$(CONFIG_REGULATOR_WL28681C) += wl28681c-regulator.o
 obj-$(CONFIG_REGULATOR_WL2864C) += wl2864c-regulator.o
 obj-$(CONFIG_REGULATOR_FAN53870) += fan53870-ldo.o
 obj-$(CONFIG_REGULATOR_MULTI_REG) += multi_regulator.o

@@ -54,17 +54,10 @@ static DEFINE_PER_CPU(struct cpu, cpu_devices);
 static void __init parse_dtb(void)
 {
 	/* Early scan of device tree from init memory */
-	if (early_init_dt_scan(dtb_early_va)) {
-		const char *name = of_flat_dt_get_machine_name();
+	if (early_init_dt_scan(dtb_early_va))
+		return;
 
-		if (name) {
-			pr_info("Machine model: %s\n", name);
-			dump_stack_set_arch_desc("%s (DT)", name);
-		}
-	} else {
-		pr_err("No DTB passed to the kernel\n");
-	}
-
+	pr_err("No DTB passed to the kernel\n");
 #ifdef CONFIG_CMDLINE_FORCE
 	strlcpy(boot_command_line, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
 	pr_info("Forcing kernel command line to: %s\n", boot_command_line);
@@ -96,8 +89,6 @@ void __init setup_arch(char **cmdline_p)
 	else
 		pr_err("No DTB found in kernel mappings\n");
 #endif
-	early_init_fdt_scan_reserved_mem();
-	misc_mem_init();
 
 #ifdef CONFIG_SWIOTLB
 	swiotlb_init(1);

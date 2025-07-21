@@ -1305,6 +1305,14 @@ err:
 	return -ENOMEM;
 }
 
+int i40e_alloc_rx_bi(struct i40e_ring *rx_ring)
+{
+	unsigned long sz = sizeof(*rx_ring->rx_bi) * rx_ring->count;
+
+	rx_ring->rx_bi = kzalloc(sz, GFP_KERNEL);
+	return rx_ring->rx_bi ? 0 : -ENOMEM;
+}
+
 static void i40e_clear_rx_bi(struct i40e_ring *rx_ring)
 {
 	memset(rx_ring->rx_bi, 0, sizeof(*rx_ring->rx_bi) * rx_ring->count);
@@ -1434,11 +1442,6 @@ int i40e_setup_rx_descriptors(struct i40e_ring *rx_ring)
 	}
 
 	rx_ring->xdp_prog = rx_ring->vsi->xdp_prog;
-
-	rx_ring->rx_bi =
-		kcalloc(rx_ring->count, sizeof(*rx_ring->rx_bi), GFP_KERNEL);
-	if (!rx_ring->rx_bi)
-		return -ENOMEM;
 
 	return 0;
 }
@@ -2663,7 +2666,7 @@ tx_only:
 		return budget;
 	}
 
-	if (q_vector->tx.ring[0].flags & I40E_TXR_FLAGS_WB_ON_ITR)
+	if (vsi->back->flags & I40E_TXR_FLAGS_WB_ON_ITR)
 		q_vector->arm_wb_state = false;
 
 	/* Exit the polling mode, but don't re-enable interrupts if stack might
@@ -2879,7 +2882,7 @@ static inline int i40e_tx_prepare_vlan_flags(struct sk_buff *skb,
 			rc = skb_cow_head(skb, 0);
 			if (rc < 0)
 				return rc;
-			vhdr = skb_vlan_eth_hdr(skb);
+			vhdr = (struct vlan_ethhdr *)skb->data;
 			vhdr->h_vlan_TCI = htons(tx_flags >>
 						 I40E_TX_FLAGS_VLAN_SHIFT);
 		} else {

@@ -121,35 +121,9 @@ struct LCM_setting_table aod_high_mode[] = {
 };
 
 struct LCM_setting_table aod_low_mode[] = {
-	/* AOD Low Mode, 10nit */
+	/* AOD Low Mode 10nit */
 	{REGFLAG_CMD, 2, {0xFE, 0x00}},
 	{REGFLAG_CMD, 2, {0x51, 0x78}},
-	{REGFLAG_CMD, 2, {0xFE, 0x10}},
-};
-
-/* fake aod command */
-struct LCM_setting_table fake_aod_on_cmd[] = {
-	/* Fake AOD Mode On */
-	{REGFLAG_CMD, 2, {0xFE, 0x00}},
-	{REGFLAG_CMD, 2, {0x51, 0x52}},
-	{REGFLAG_CMD, 2, {0xFE, 0x10}},
-};
-
-struct LCM_setting_table fake_aod_off_cmd[] = {
-	/* Fake AOD Mode Off */
-};
-
-struct LCM_setting_table fake_aod_high_mode[] = {
-	/* Fake AOD High Mode, 50nit */
-	{REGFLAG_CMD, 2, {0xFE, 0x00}},
-	{REGFLAG_CMD, 2, {0x51, 0x52}},
-	{REGFLAG_CMD, 2, {0xFE, 0x10}},
-};
-
-struct LCM_setting_table fake_aod_low_mode[] = {
-	/* Fake AOD Low Mode, 5nit */
-	{REGFLAG_CMD, 2, {0xFE, 0x00}},
-	{REGFLAG_CMD, 2, {0x51, 0x08}},
 	{REGFLAG_CMD, 2, {0xFE, 0x10}},
 };
 /* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
@@ -299,11 +273,6 @@ static void transsion_lcm0_panel_init(struct lcm *ctx)
 	usleep_range(2000, 2100);
 	lcm_dcs_write_seq_static(ctx,0xFE,0x20);
 	lcm_dcs_write_seq_static(ctx,0x0C,0x84);
-
-	lcm_dcs_write_seq_static(ctx,0xFE,0x20); /* fix Backlight-TE issue with elvss-elvdd */
-	lcm_dcs_write_seq_static(ctx,0x5A,0x0F);
-	lcm_dcs_write_seq_static(ctx,0x5B,0x41);
-
 	lcm_dcs_write_seq_static(ctx,0xFE,0x00);
 	lcm_dcs_write_seq_static(ctx,0x53,0x20);
 	lcm_dcs_write_seq_static(ctx,0x2A,0x00,0x08,0x01,0x85);
@@ -637,7 +606,6 @@ static struct mtk_panel_params ext_params = {
 		.hs_trail = 10,
 	},
 	.oplus_reset_before_mipi = 1,
-	.panel_bpp = 8,
 };
 
 #if 0
@@ -670,56 +638,36 @@ static bool update_lcm_id_by_mode(unsigned int dst_mode)
 static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
 {
 	unsigned int i = 0;
-	unsigned int reg_count = 0;
-	struct LCM_setting_table *cmd = NULL;
-	unsigned int fake_aod_value = oplus_ofp_get_fake_aod_mode();
-	OFP_DEBUG("start\n");
 
-	if (!dsi || !cb) {
-		OFP_ERR("Invalid params\n");
-		return 0;
-	}
+	for (i = 0; i < (sizeof(aod_off_cmd) / sizeof(struct LCM_setting_table)); i++) {
+		unsigned int cmd;
+		cmd = aod_off_cmd[i].cmd;
 
-	if (fake_aod_value) {
-		cmd = fake_aod_off_cmd;
-		reg_count = sizeof(fake_aod_off_cmd) / sizeof(struct LCM_setting_table);
-	} else {
-		cmd = aod_off_cmd;
-		reg_count = sizeof(aod_off_cmd) / sizeof(struct LCM_setting_table);
-	}
-
-	for (i = 0; i < reg_count; i++) {
-		switch (cmd[i].cmd) {
+		switch (cmd) {
 			case REGFLAG_DELAY:
-				if (!handle) {
-					usleep_range(cmd[i].count * 1000, cmd[i].count * 1000 + 100);
+				if (handle == NULL) {
+					usleep_range(aod_off_cmd[i].count * 1000, aod_off_cmd[i].count * 1000 + 100);
 				} else {
-					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(cmd[i].count * 1000), CMDQ_GPR_R14);
+					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(aod_off_cmd[i].count * 1000), CMDQ_GPR_R14);
 				}
 				break;
 			case REGFLAG_UDELAY:
-				if (!handle) {
-					usleep_range(cmd[i].count, cmd[i].count + 100);
+				if (handle == NULL) {
+					usleep_range(aod_off_cmd[i].count, aod_off_cmd[i].count + 100);
 				} else {
-					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(cmd[i].count), CMDQ_GPR_R14);
+					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(aod_off_cmd[i].count), CMDQ_GPR_R14);
 				}
 				break;
 			case REGFLAG_END_OF_TABLE:
 				break;
 			default:
-				cb(dsi, handle, cmd[i].para_list, cmd[i].count);
+				cb(dsi, handle, aod_off_cmd[i].para_list, aod_off_cmd[i].count);
 		}
 	}
 
 	lcm_setbacklight_cmdq(dsi, cb, handle, last_backlight);
 
-	if (fake_aod_value) {
-		OFP_INFO("send fake aod off cmd\n");
-	} else {
-		OFP_INFO("send aod off cmd\n");
-	}
-
-	OFP_DEBUG("end\n");
+	OFP_INFO("send aod off cmd\n");
 
 	return 0;
 }
@@ -727,54 +675,26 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
 {
 	unsigned int i = 0;
-	unsigned int reg_count = 0;
-	struct LCM_setting_table *cmd = NULL;
-	unsigned int fake_aod_value = oplus_ofp_get_fake_aod_mode();
-	OFP_INFO("foldable panel_doze_enable\n");
 
-	if (!dsi || !cb) {
-		OFP_ERR("Invalid params\n");
-		return 0;
-	}
+	for (i = 0; i < (sizeof(aod_on_cmd) / sizeof(struct LCM_setting_table)); i++) {
+		unsigned int cmd;
+		cmd = aod_on_cmd[i].cmd;
 
-	if (fake_aod_value) {
-		cmd = fake_aod_on_cmd;
-		reg_count = sizeof(fake_aod_on_cmd) / sizeof(struct LCM_setting_table);
-	} else {
-		cmd = aod_on_cmd;
-		reg_count = sizeof(aod_on_cmd) / sizeof(struct LCM_setting_table);
-	}
-
-	for (i = 0; i < reg_count; i++) {
-		switch (cmd[i].cmd) {
+		switch (cmd) {
 			case REGFLAG_DELAY:
-				if (!handle) {
-					usleep_range(cmd[i].count * 1000, cmd[i].count * 1000 + 100);
-				} else {
-					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(cmd[i].count * 1000), CMDQ_GPR_R14);
-				}
+				usleep_range(aod_on_cmd[i].count * 1000, aod_on_cmd[i].count * 1000 + 100);
 				break;
 			case REGFLAG_UDELAY:
-				if (!handle) {
-					usleep_range(cmd[i].count, cmd[i].count + 100);
-				} else {
-					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(cmd[i].count), CMDQ_GPR_R14);
-				}
+				usleep_range(aod_on_cmd[i].count, aod_on_cmd[i].count + 100);
 				break;
 			case REGFLAG_END_OF_TABLE:
 				break;
 			default:
-				cb(dsi, handle, cmd[i].para_list, cmd[i].count);
+				cb(dsi, handle, aod_on_cmd[i].para_list, aod_on_cmd[i].count);
 		}
 	}
 
-	if (fake_aod_value) {
-		OFP_INFO("send fake aod on cmd\n");
-	} else {
-		OFP_INFO("send aod on cmd\n");
-	}
-
-	OFP_DEBUG("end\n");
+	OFP_INFO("send aod on cmd\n");
 
 	return 0;
 }
@@ -782,64 +702,17 @@ static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce c
 static int panel_set_aod_light_mode(void *dsi, dcs_write_gce cb, void *handle, unsigned int level)
 {
 	int i = 0;
-	unsigned int reg_count = 0;
-	struct LCM_setting_table *cmd = NULL;
-	unsigned int fake_aod_value = oplus_ofp_get_fake_aod_mode();
-	OFP_DEBUG("start\n");
 
-	if (!dsi || !cb) {
-		OFP_ERR("Invalid params\n");
-		return 0;
-	}
-
-	if (fake_aod_value) {
-		if (!level) {
-			cmd = fake_aod_high_mode;
-			reg_count = sizeof(fake_aod_high_mode) / sizeof(struct LCM_setting_table);
-		} else {
-			cmd = fake_aod_low_mode;
-			reg_count = sizeof(fake_aod_low_mode) / sizeof(struct LCM_setting_table);
+	if (level == 0) {
+		for (i = 0; i < sizeof(aod_high_mode) / sizeof(struct LCM_setting_table); i++) {
+			cb(dsi, handle, aod_high_mode[i].para_list, aod_high_mode[i].count);
 		}
 	} else {
-		if (!level) {
-			cmd = aod_high_mode;
-			reg_count = sizeof(aod_high_mode) / sizeof(struct LCM_setting_table);
-		} else {
-			cmd = aod_low_mode;
-			reg_count = sizeof(aod_low_mode) / sizeof(struct LCM_setting_table);
+		for (i = 0; i < sizeof(aod_low_mode) / sizeof(struct LCM_setting_table); i++) {
+			cb(dsi, handle, aod_low_mode[i].para_list, aod_low_mode[i].count);
 		}
 	}
-
-	for (i = 0; i < reg_count; i++) {
-		switch (cmd[i].cmd) {
-			case REGFLAG_DELAY:
-				if (!handle) {
-					usleep_range(cmd[i].count * 1000, cmd[i].count * 1000 + 100);
-				} else {
-					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(cmd[i].count * 1000), CMDQ_GPR_R14);
-				}
-				break;
-			case REGFLAG_UDELAY:
-				if (!handle) {
-					usleep_range(cmd[i].count, cmd[i].count + 100);
-				} else {
-					cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(cmd[i].count), CMDQ_GPR_R14);
-				}
-				break;
-			case REGFLAG_END_OF_TABLE:
-				break;
-			default:
-				cb(dsi, handle, cmd[i].para_list, cmd[i].count);
-		}
-	}
-
-	if (fake_aod_value) {
-		OFP_INFO("send fake aod light mode cmd,level=%u\n", level);
-	} else {
-		OFP_INFO("send aod light mode cmd,level=%u\n", level);
-	}
-
-	OFP_DEBUG("end\n");
+	OFP_INFO("level = %d\n", level);
 
 	return 0;
 }

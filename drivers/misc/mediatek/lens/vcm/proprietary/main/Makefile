@@ -68,7 +68,4 @@ mainaf-y  += common/bu63169af/OIS_func.o
 mainaf-y  += common/bu63169af/OIS_main.o
 mainaf-y  += common/bu63169af/OIS_user.o
 mainaf-y  += common/bu64253gwzaf/BU64253GWZAF.o
-mainaf-y  += common/aw8601xaf/AW8601xAF.o
-mainaf-y  += common/pe916c6haf/PE916C6HAF.o
-mainaf-y  += common/gt9769af/GT9769AF.o
-mainaf-y  += common/gt9772af_24267/GT9772AF_24267.o
+

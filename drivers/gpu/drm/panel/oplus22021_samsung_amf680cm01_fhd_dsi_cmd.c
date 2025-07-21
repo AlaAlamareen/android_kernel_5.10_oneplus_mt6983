@@ -89,8 +89,6 @@ extern bool power_mode_off;
 /* whether enter hbm brightness level or not */
 static bool hbm_brightness_flag = false;
 
-static bool aod_mode = false;
-
 extern void lcdinfo_notify(unsigned long val, void *v);
 
 struct lcm_pmic_info {
@@ -402,7 +400,6 @@ static int lcm_unprepare(struct drm_panel *panel)
 	usleep_range(110000, 110100);
 	ctx->error = 0;
 	ctx->prepared = false;
-	aod_mode = false;
 	DISP_INFO("Successful\n");
 
 	return 0;
@@ -585,7 +582,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.vact_timing_fps = 60,
 		},
 		.skip_unnecessary_switch = true,
-		.panel_bpp = 10,
 	},
 	//fhd_sdc_120_mode
 	{
@@ -680,7 +676,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.vact_timing_fps = 120,
 		},
 		.skip_unnecessary_switch = true,
-		.panel_bpp = 10,
 	},
 };
 
@@ -695,7 +690,7 @@ static int mtk_panel_ext_param_get(struct drm_panel *panel,
 
 	mode_id = get_mode_enum(m);
 
-	DISP_DEBUG("mode:%d,mode_id:%d\n",id,mode_id);
+    DISP_INFO("mode:%d,mode_id:%d\n",id,mode_id);
 
 	if (mode_id == FHD_SDC60 ) {
 		*ext_param = &ext_params[0];
@@ -706,7 +701,7 @@ static int mtk_panel_ext_param_get(struct drm_panel *panel,
 	}
 
 	if (*ext_param)
-		DISP_DEBUG("data_rate:%d\n", (*ext_param)->data_rate);
+		DISP_INFO("data_rate:%d\n", (*ext_param)->data_rate);
 	else
 		DISP_ERR("ext_param is NULL;\n");
 
@@ -938,9 +933,6 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsi
 		return 0;
 	} else if (level > BRIGHTNESS_MAX) {
 		level = BRIGHTNESS_MAX;
-	} else if ((aod_mode == true) && (level != 0)) {
-		pr_info("[LCM][INFO][%s:%d]filter backlight %u setting in aod mode\n", __func__, __LINE__, level);
-		return 0;
 	}
 
 	pr_info("[LCM][INFO][%s:%d]backlight lvl:%d\n", __func__, __LINE__, level);
@@ -1059,7 +1051,7 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 				cb(dsi, handle, aod_off_cmd[i].para_list, aod_off_cmd[i].count);
 		}
 	}
-	aod_mode = false;
+
 	lcm_setbacklight_cmdq(dsi, cb, handle, last_backlight);
 
 	OFP_INFO("send aod off cmd\n");
@@ -1094,7 +1086,7 @@ static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce c
 				cb(dsi, handle, aod_on_cmd[i].para_list, aod_on_cmd[i].count);
 		}
 	}
-	aod_mode = true;
+
 	OFP_INFO("send aod on cmd\n");
 
 	return 0;

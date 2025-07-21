@@ -148,8 +148,3 @@ a maintainer tree)
     - tag the patch subject with `ANDROID:`
     - add a `Bug:` tag with the Android bug (required for android-specific features)
 
-# android_kernel_5.10_oneplus_mt6983
-# android_kernel_5.10_oneplus_mt6983
-# android_kernel_5.10_oneplus_mt6983
-# android_kernel_5.10_oneplus_mt6983
-# android_kernel_5.10_oneplus_mt6983

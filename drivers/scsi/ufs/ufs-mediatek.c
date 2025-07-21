@@ -19,9 +19,6 @@
 #include <linux/reset.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/tracepoint.h>
-#include <linux/rtc.h>
-/*google patch Random W/R performance improvement*/
-#include <linux/irq.h>
 
 #if IS_ENABLED(CONFIG_RPMB)
 #include <asm/unaligned.h>
@@ -44,7 +41,6 @@
 #include "ufs-mediatek-dbg.h"
 #include "../sd.h"
 
-#define ONE_DAY_SEC 86400
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 static int ufs_abort_aee_count;
@@ -811,77 +807,6 @@ static void ufshcd_lrb_devcmd_time_statistics(struct ufs_hba *hba, struct ufshcd
 			ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 	}
 }
-
-int get_rtc_time(struct rtc_time *tm)
-{
-	struct rtc_device *rtc;
-	int rc = 0;
-
-	rtc = rtc_class_open("rtc0");
-	if (rtc == NULL)
-		return -1;
-
-	rc = rtc_read_time(rtc, tm);
-	if (rc)
-		goto close_time;
-
-	rc = rtc_valid_tm(tm);
-	if (rc)
-		goto close_time;
-
-close_time:
-	rtc_class_close(rtc);
-
-	return rc;
-}
-
-void ufs_active_time_get(struct ufs_hba *hba)
-{
-	struct rtc_time tm;
-	int rc = 0;
-	ufs_transmission_status.active_count++;
-	rc = get_rtc_time(&tm);
-	if (rc != 0) {
-		dev_err(hba->dev,"ufs_transmission_status: get_rtc_time failed\n");
-		return;
-	}
-	ufs_transmission_status.resume_timing = (tm.tm_hour * 3600 + tm.tm_min * 60 + tm.tm_sec);
-	if (ufs_transmission_status.resume_timing < ufs_transmission_status.suspend_timing) {
-		ufs_transmission_status.sleep_time += ((ufs_transmission_status.resume_timing
-			+ ONE_DAY_SEC) - ufs_transmission_status.suspend_timing);
-		return;
-	}
-	if(ufs_transmission_status.suspend_timing == 0)
-		return;
-
-	ufs_transmission_status.sleep_time += (ufs_transmission_status.resume_timing
-		- ufs_transmission_status.suspend_timing);
-	return;
-}
-
-void ufs_sleep_time_get(struct ufs_hba *hba)
-{
-	struct rtc_time tm;
-	int rc = 0;
-	ufs_transmission_status.sleep_count++;
-	rc = get_rtc_time(&tm);
-	if (rc != 0) {
-		dev_err(hba->dev,"ufs_transmission_status: get_rtc_time failed\n");
-		return;
-	}
-	ufs_transmission_status.suspend_timing = (tm.tm_hour * 3600 + tm.tm_min * 60 + tm.tm_sec);
-	if (ufs_transmission_status.suspend_timing < ufs_transmission_status.resume_timing) {
-		ufs_transmission_status.active_time += ((ufs_transmission_status.suspend_timing
-			+ ONE_DAY_SEC) - ufs_transmission_status.resume_timing);
-		return;
-	}
-	if(ufs_transmission_status.resume_timing == 0)
-		return;
-
-	ufs_transmission_status.active_time += (ufs_transmission_status.suspend_timing
-		- ufs_transmission_status.resume_timing);
-	return;
-}
 /*feature-devinfo-v001-2-end*/
 
 #define UFS_VEND_SAMSUNG  (1 << 0)
@@ -949,6 +874,11 @@ static void ufs_mtk_trace_vh_compl_command_vend_ss(struct ufs_hba *hba,
 			}
 		}
 	}
+#if defined(CONFIG_UFSHID)
+	/* Check if it is the last request to be completed */
+	if (!out_tasks && (out_reqs == (1 << lrbp->task_tag)))
+		schedule_work(&ufsf->on_idle_work);
+#endif
 
 /*feature-devinfo-v001-3-begin*/
 	if (lrbp->cmd) {
@@ -965,6 +895,16 @@ static void ufs_mtk_trace_vh_compl_command_vend_ss(struct ufs_hba *hba,
 /*feature-devinfo-v001-3-end*/
 }
 
+static void ufs_mtk_trace_vh_send_tm_command_vend_ss(void *data, struct ufs_hba *hba,
+			int tag, const char *str)
+{
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
+
+	if (strcmp(str, "tm_complete") == 0)
+		ufsf_reset_lu(ufsf);
+
+}
+
 static void ufs_mtk_trace_vh_update_sdev_vend_ss(void *data, struct scsi_device *sdev)
 {
 	struct ufs_hba *hba = shost_priv(sdev->host);
@@ -972,6 +912,14 @@ static void ufs_mtk_trace_vh_update_sdev_vend_ss(void *data, struct scsi_device 
 
 	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG)
 		ufsf_slave_configure(ufsf, sdev);
+}
+
+static void ufs_mtk_trace_vh_send_command_vend_ss(void *data, struct ufs_hba *hba,
+				struct ufshcd_lrb *lrbp)
+{
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
+
+	ufsf_hid_acc_io_stat(ufsf, lrbp);
 }
 #endif
 
@@ -982,11 +930,6 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 	if (!cmd)
 		return;
 
-	if (lrbp && lrbp->cmd && lrbp->cmd->cmnd[0]) {
-		struct request *rq = blk_mq_rq_from_pdu(lrbp->cmd);
-		if (rq)
-			rq->cmd_flags |= REQ_HIPRI;
-	}
 	if (ufs_mtk_is_data_cmd(cmd)) {
 		ufs_mtk_biolog_send_command(lrbp->task_tag, cmd);
 		ufs_mtk_biolog_check(1);
@@ -1053,8 +996,18 @@ static struct tracepoints_table interests[] = {
 		.vend = UFS_VEND_SAMSUNG
 	},
 	{
+		.name = "android_vh_ufs_send_tm_command",
+		.func = ufs_mtk_trace_vh_send_tm_command_vend_ss,
+		.vend = UFS_VEND_SAMSUNG
+	},
+	{
 		.name = "android_vh_ufs_update_sdev",
 		.func = ufs_mtk_trace_vh_update_sdev_vend_ss,
+		.vend = UFS_VEND_SAMSUNG
+	},
+	{
+		.name = "android_vh_ufs_send_command",
+		.func = ufs_mtk_trace_vh_send_command_vend_ss,
 		.vend = UFS_VEND_SAMSUNG
 	},
 #endif
@@ -1934,6 +1887,31 @@ static void ufs_mtk_ctrl_dev_pwr(struct ufs_hba *hba, bool vcc_on, bool is_init)
 }
 /*feature-flashaging806-v001-2-begin*/
 //#ifdef OPLUS_UFS_SIGNAL_QUALITY
+static void recordTimeStamp(
+	struct signal_quality *record,
+	enum ufs_event_type type
+) {
+	ktime_t cur_time = ktime_get();
+	switch (type)
+	{
+	case UFS_EVT_PA_ERR:
+	case UFS_EVT_DL_ERR:
+	case UFS_EVT_NL_ERR:
+	case UFS_EVT_TL_ERR:
+	case UFS_EVT_DME_ERR:
+		if (STAMP_RECORD_MAX <= record->stamp_pos)
+			return;
+		if (0 == record->stamp_pos)
+			record->stamp[0] = cur_time;
+		else if (cur_time > (record->stamp[record->stamp_pos - 1] +
+				STAMP_MIN_INTERVAL))
+			record->stamp[record->stamp_pos++] = cur_time;
+		return;
+	default:
+		return;
+	}
+}
+
 void recordUniproErr(
 	struct unipro_signal_quality_ctrl *signalCtrl,
 	u32 reg,
@@ -1942,6 +1920,7 @@ void recordUniproErr(
 	unsigned long err_bits;
 	int ec;
 	struct signal_quality *rec = &signalCtrl->record;
+	recordTimeStamp(rec, type);
 	switch (type)
 	{
 	case UFS_EVT_FATAL_ERR:
@@ -2009,8 +1988,8 @@ void recordUniproErr(
 	seq_printf(s, #x"\t%d\n", signalCtrl->record.unipro_TL_err_cnt[x])
 #define SEQ_DME_PRINT(x)    \
 	seq_printf(s, #x"\t%d\n", signalCtrl->record.unipro_DME_err_cnt[x])
-#define SEQ_GEAR_PRINT(x)  \
-	seq_printf(s, #x"\t%d\n", signalCtrl->record.gear_err_cnt[x])
+#define SEQ_STAMP_PRINT(x)  \
+	seq_printf(s, #x"\t%d\n", signalCtrl->record.stamp[x])
 
 static int record_read_func(struct seq_file *s, void *v)
 {
@@ -2063,10 +2042,16 @@ static int record_read_func(struct seq_file *s, void *v)
 	SEQ_DME_PRINT(UNIPRO_DME_TX_QOS);
 	SEQ_DME_PRINT(UNIPRO_DME_RX_QOS);
 	SEQ_DME_PRINT(UNIPRO_DME_PA_INIT_QOS);
-	SEQ_GEAR_PRINT(UFS_HS_G1);
-	SEQ_GEAR_PRINT(UFS_HS_G2);
-	SEQ_GEAR_PRINT(UFS_HS_G3);
-	SEQ_GEAR_PRINT(UFS_HS_G4);
+	SEQ_STAMP_PRINT(UNIPRO_0_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_1_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_2_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_3_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_4_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_5_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_6_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_7_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_8_STAMP);
+	SEQ_STAMP_PRINT(UNIPRO_9_STAMP);
 	return 0;
 }
 
@@ -2085,43 +2070,10 @@ static const struct proc_ops record_fops = {
 	seq_printf(s, #x": %d\n", signalCtrl->record.x \
 		-signalCtrl->record_upload.x);\
 	signalCtrl->record_upload.x = signalCtrl->record.x;
-
-#define SEQ_PA_UPLOAD_PRINT(x) \
-	seq_printf(s, #x": %d\n", signalCtrl->record.unipro_PA_err_cnt[x] \
-		-signalCtrl->record_upload.unipro_PA_err_cnt[x]);\
-	signalCtrl->record_upload.unipro_PA_err_cnt[x] = signalCtrl->record.unipro_PA_err_cnt[x];
-
-#define SEQ_DL_UPLOAD_PRINT(x) \
-		seq_printf(s, #x": %d\n", signalCtrl->record.unipro_DL_err_cnt[x] \
-			-signalCtrl->record_upload.unipro_DL_err_cnt[x]);\
-		signalCtrl->record_upload.unipro_DL_err_cnt[x] = signalCtrl->record.unipro_DL_err_cnt[x];
-
-#define SEQ_DL_UPLOAD_PRINT(x) \
-			seq_printf(s, #x": %d\n", signalCtrl->record.unipro_DL_err_cnt[x] \
-				-signalCtrl->record_upload.unipro_DL_err_cnt[x]);\
-			signalCtrl->record_upload.unipro_DL_err_cnt[x] = signalCtrl->record.unipro_DL_err_cnt[x];
-
-#define SEQ_NL_UPLOAD_PRINT(x) \
-				seq_printf(s, #x": %d\n", signalCtrl->record.unipro_NL_err_cnt[x] \
-					-signalCtrl->record_upload.unipro_NL_err_cnt[x]);\
-				signalCtrl->record_upload.unipro_NL_err_cnt[x] = signalCtrl->record.unipro_NL_err_cnt[x];
-
-#define SEQ_TL_UPLOAD_PRINT(x) \
-					seq_printf(s, #x": %d\n", signalCtrl->record.unipro_TL_err_cnt[x] \
-						-signalCtrl->record_upload.unipro_TL_err_cnt[x]);\
-					signalCtrl->record_upload.unipro_TL_err_cnt[x] = signalCtrl->record.unipro_TL_err_cnt[x];
-
-#define SEQ_DME_UPLOAD_PRINT(x) \
-						seq_printf(s, #x": %d\n", signalCtrl->record.unipro_DME_err_cnt[x] \
-							-signalCtrl->record_upload.unipro_DME_err_cnt[x]);\
-						signalCtrl->record_upload.unipro_DME_err_cnt[x] = signalCtrl->record.unipro_DME_err_cnt[x];
-
-#define SEQ_GEAR_UPLOAD_PRINT(x) \
-						seq_printf(s, #x": %d\n", signalCtrl->record.gear_err_cnt[x] \
-							-signalCtrl->record_upload.gear_err_cnt[x]);\
-						signalCtrl->record_upload.gear_err_cnt[x] = signalCtrl->record.gear_err_cnt[x];
-
-
+#define SEQ_UPLOAD_STAMP_PRINT(x) \
+	seq_printf(s, #x": %d\n", signalCtrl->record.stamp[x] \
+		-signalCtrl->record_upload.stamp[x]);\
+	signalCtrl->record_upload.stamp[x] = signalCtrl->record.stamp[x];
 static int record_upload_read_func(struct seq_file *s, void *v)
 {
 	struct unipro_signal_quality_ctrl *signalCtrl =
@@ -2138,50 +2090,7 @@ static int record_upload_read_func(struct seq_file *s, void *v)
 	SEQ_UPLOAD_PRINT(unipro_NL_err_total_cnt);
 	SEQ_UPLOAD_PRINT(unipro_TL_err_total_cnt);
 	SEQ_UPLOAD_PRINT(unipro_DME_err_total_cnt);
-	SEQ_PA_UPLOAD_PRINT(UNIPRO_PA_LANE0_ERR_CNT);
-	SEQ_PA_UPLOAD_PRINT(UNIPRO_PA_LANE1_ERR_CNT);
-	SEQ_PA_UPLOAD_PRINT(UNIPRO_PA_LANE2_ERR_CNT);
-	SEQ_PA_UPLOAD_PRINT(UNIPRO_PA_LANE3_ERR_CNT);
-	SEQ_PA_UPLOAD_PRINT(UNIPRO_PA_LINE_RESET);
-
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_NAC_RECEIVED);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_TCX_REPLAY_TIMER_EXPIRED);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_AFCX_REQUEST_TIMER_EXPIRED);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_FCX_PROTECTION_TIMER_EXPIRED);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_CRC_ERROR);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_RX_BUFFER_OVERFLOW);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_MAX_FRAME_LENGTH_EXCEEDED);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_WRONG_SEQUENCE_NUMBER);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_AFC_FRAME_SYNTAX_ERROR);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_NAC_FRAME_SYNTAX_ERROR);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_EOF_SYNTAX_ERROR);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_FRAME_SYNTAX_ERROR);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_BAD_CTRL_SYMBOL_TYPE);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_PA_INIT_ERROR);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_PA_ERROR_IND_RECEIVED);
-	SEQ_DL_UPLOAD_PRINT(UNIPRO_DL_PA_INIT);
-
-	SEQ_NL_UPLOAD_PRINT(UNIPRO_NL_UNSUPPORTED_HEADER_TYPE);
-	SEQ_NL_UPLOAD_PRINT(UNIPRO_NL_BAD_DEVICEID_ENC);
-	SEQ_NL_UPLOAD_PRINT(UNIPRO_NL_LHDR_TRAP_PACKET_DROPPING);
-
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_UNSUPPORTED_HEADER_TYPE);
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_UNKNOWN_CPORTID);
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_NO_CONNECTION_RX);
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_CONTROLLED_SEGMENT_DROPPING);
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_BAD_TC);
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_E2E_CREDIT_OVERFLOW);
-	SEQ_TL_UPLOAD_PRINT(UNIPRO_TL_SAFETY_VALVE_DROPPING);
-
-	SEQ_DME_UPLOAD_PRINT(UNIPRO_DME_GENERIC);
-	SEQ_DME_UPLOAD_PRINT(UNIPRO_DME_TX_QOS);
-	SEQ_DME_UPLOAD_PRINT(UNIPRO_DME_RX_QOS);
-	SEQ_DME_UPLOAD_PRINT(UNIPRO_DME_PA_INIT_QOS);
-
-	SEQ_GEAR_UPLOAD_PRINT(UFS_HS_G1);
-	SEQ_GEAR_UPLOAD_PRINT(UFS_HS_G2);
-	SEQ_GEAR_UPLOAD_PRINT(UFS_HS_G3);
-	SEQ_GEAR_UPLOAD_PRINT(UFS_HS_G4);
+	SEQ_UPLOAD_STAMP_PRINT(UNIPRO_0_STAMP);
 	return 0;
 }
 
@@ -2223,31 +2132,6 @@ void remove_signal_quality_proc(struct unipro_signal_quality_ctrl *signalCtrl)
 }
 //#endif /*OPLUS_UFS_SIGNAL_QUALITY*/
 /*feature-flashaging806-v001-2-end*/
-
-/*feature-iostack-v001-begin*/
-#define IOSTACK_WORK_DELAY  (10 * HZ)
-static void iostack_monitor_work(struct work_struct *work)
-{
-	struct ufs_mtk_host *host = container_of(to_delayed_work(work),
-							struct ufs_mtk_host,
-							iostack_work);
-	struct ufs_hba *hba = host->hba;
-	unsigned int hba_irqs = 0;
-	unsigned int self_block = hba->host->host_self_blocked;
-
-	hba_irqs = kstat_irqs_usr(hba->irq);
-	pr_err("iostack:hba_irqs = %d, self-block = %d\n", hba_irqs, self_block);
-	schedule_delayed_work(&host->iostack_work, IOSTACK_WORK_DELAY);
-}
-
-static void ufs_iostack_init(struct ufs_mtk_host *host)
-{
-	INIT_DELAYED_WORK(&host->iostack_work, iostack_monitor_work);
-	schedule_delayed_work(&host->iostack_work, IOSTACK_WORK_DELAY);
-}
-/*feature-iostack-v001-end*/
-
-
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -2363,7 +2247,6 @@ skip_vcc:
 					  unsigned int,
 					  void __user *))ufs_mtk_ioctl;
 #endif
-	ufs_iostack_init(host);
 	goto out;
 
 out_variant_clear:
@@ -2600,17 +2483,10 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 	}
 
 	err = ufshcd_uic_hibern8_exit(hba);
-	if (err)
+	if (!err)
+		ufshcd_set_link_active(hba);
+	else
 		return err;
-
-	/* Check link state to make sure exit h8 success */
-	ufs_mtk_wait_idle_state(hba, 5);
-	err = ufs_mtk_wait_link_state(hba, VS_LINK_UP, 100);
-	if (err) {
-		dev_warn(hba->dev, "exit h8 state fail, err=%d\n", err);
-		return err;
-	}
-	ufshcd_set_link_active(hba);
 
 	err = ufshcd_make_hba_operational(hba);
 	if (err)
@@ -2659,7 +2535,7 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	int err;
 	struct arm_smccc_res res;
-	ufs_sleep_time_get(hba);
+
 	if (ufshcd_is_link_hibern8(hba)) {
 		err = ufs_mtk_link_set_lpm(hba);
 		if (err)
@@ -2699,7 +2575,6 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	int err;
 	struct arm_smccc_res res;
 
-	ufs_active_time_get(hba);
 	if (ufshcd_eh_in_progress(hba))
 		ufs_mtk_ctrl_dev_pwr(hba, true, false);
 
@@ -2861,10 +2736,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 
 	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
 
-	if (dev_info->wmanufacturerid != UFS_VENDOR_PHISON_CUST)
-		dev_info->hpb_enabled = false;
-	else
-		pr_info("ufs wmanufacturerid = %x, enable hpb",dev_info->wmanufacturerid);
+	dev_info->hpb_enabled = false;
 
 	if (dev_info->wmanufacturerid == UFS_VENDOR_MICRON)
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC;
@@ -2892,12 +2764,6 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 
 	ufs_mtk_install_tracepoints(hba);
 
-	/* give more time for H8 */
-	if (STR_PRFX_EQUAL("KLUFG4LHGC-B0E1", dev_info->model)) {
-		hba->rpm_lvl = UFS_PM_LVL_1;
-		hba->spm_lvl = UFS_PM_LVL_1;
-	}
-
 #if defined(CONFIG_UFSFEATURE)
 	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
 		host->ufsf.hba = hba;
@@ -2906,24 +2772,12 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 #endif
 }
 
-void recordGearErr(struct unipro_signal_quality_ctrl *signalCtrl, struct ufs_hba *hba)
-{
-	struct ufs_pa_layer_attr *pwr_info = &hba->pwr_info;
-	u32 dev_gear = min_t(u32, pwr_info->gear_rx, pwr_info->gear_tx);
-
-	if (dev_gear > UFS_HS_G4)
-		return;
-
-	signalCtrl->record.gear_err_cnt[dev_gear]++;
-}
-
 static void ufs_mtk_event_notify(struct ufs_hba *hba,
 				 enum ufs_event_type evt, void *data)
 {
 	unsigned int val = *(u32 *)data;
         /*feature-flashaging806-v001-4-begin*/
 	recordUniproErr(&signalCtrl, val, evt);
-	recordGearErr(&signalCtrl, hba);
         /*feature-flashaging806-v001-4-end*/
 	trace_ufs_mtk_event(evt, val);
 
@@ -2978,6 +2832,16 @@ static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 		usleep_range(5000, 5100);
 }
 
+void ufs_mtk_setup_task_mgmt(struct ufs_hba *hba, int tag, u8 tm_function)
+{
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
+
+	if (ufsf->hba && (tm_function == UFS_LOGICAL_RESET))
+		ufsf_prepare_reset_lu(ufsf);
+#endif
+}
+
 /*
  * struct ufs_hba_mtk_vops - UFS MTK specific variant operations
  *
@@ -3001,6 +2865,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.dbg_register_dump   = ufs_mtk_dbg_register_dump,
 	.device_reset        = ufs_mtk_device_reset,
 	.event_notify        = ufs_mtk_event_notify,
+	.setup_task_mgmt     = ufs_mtk_setup_task_mgmt,
 };
 
 /**
@@ -3017,7 +2882,6 @@ static int ufs_mtk_probe(struct platform_device *pdev)
 	struct platform_device *reset_pdev;
 	struct device_link *link;
 	struct ufs_hba *hba;
-	struct cpumask dstp;
 
 	reset_node = of_find_compatible_node(NULL, NULL,
 					     "ti,syscon-reset");
@@ -3052,16 +2916,8 @@ skip_reset:
 
 	/* set affinity to cpu3 */
 	hba = platform_get_drvdata(pdev);
-	cpumask_clear(&dstp);
-	cpumask_set_cpu(7, &dstp);
-	cpumask_set_cpu(6, &dstp);
-	cpumask_set_cpu(5, &dstp);
-	irq_modify_status(hba->irq, 0, IRQ_NO_BALANCING);
-	if (hba && hba->irq) {
-		err = irq_set_affinity_hint(hba->irq, &dstp);
-		if (err < 0)
-			dev_err(dev, "affinity set err=%d\n", err);
-	}
+	if (hba && hba->irq)
+		irq_set_affinity_hint(hba->irq, get_cpu_mask(3));
 
 	/*
 	 * Because the default power setting of VSx (the upper layer of
@@ -3125,7 +2981,7 @@ int ufs_mtk_pltfrm_suspend(struct device *dev)
 
 #if defined(CONFIG_UFSFEATURE)
 	if (ufsf->hba)
-		ufsf_suspend(ufsf, true);
+		ufsf_suspend(ufsf);
 #endif
 
 	/* Check if shutting down */
@@ -3194,7 +3050,7 @@ int ufs_mtk_pltfrm_runtime_suspend(struct device *dev)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 
 	if (ufsf->hba)
-		ufsf_suspend(ufsf, false);
+		ufsf_suspend(ufsf);
 #endif
 
 	if (ufshcd_is_auto_hibern8_supported(hba)) {
@@ -3251,7 +3107,7 @@ void ufs_mtk_shutdown(struct platform_device *pdev)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 
 	if (ufsf->hba)
-		ufsf_suspend(ufsf, false);
+		ufsf_suspend(ufsf);
 #endif
 
 	/*

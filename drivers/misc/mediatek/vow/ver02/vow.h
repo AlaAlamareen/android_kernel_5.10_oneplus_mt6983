@@ -204,9 +204,7 @@ enum vow_ipi_msgid_t {
 	IPIMSG_VOW_SET_CUSTOM_MODEL = 28,
 	IPIMSG_VOW_HAL_REBOOT = 29,
 	IPIMSG_VOW_FLUSH = 30,
-	IPIMSG_VOW_PMIC_EFUSE_VER = 31,
-	/*------ sound_soc-vow-kernel ------*/
-	IPIMSG_VOW_PCM_HWFREE = 100
+	IPIMSG_VOW_PMIC_EFUSE_VER = 31
 };
 
 enum vow_eint_status_t {
@@ -286,7 +284,6 @@ enum {
 	VENDOR_ID_MTK = 77,     //'M'
 	VENDOR_ID_AMAZON = 65,  //'A'
 	VENDOR_ID_SPEECH = 83,  //'S'
-	VENDOR_ID_BREENO = 84,  //'B'
 	VENDOR_ID_OTHERS = 71,
 	VENDOR_ID_NONE = 0
 };

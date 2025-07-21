@@ -103,8 +103,7 @@ int imgsys_queue_enable(struct imgsys_queue *que)
 		dev_info(que->dev, "%s: kthread_run failed\n", __func__);
 		return PTR_ERR(que->task);
 	}
-	//sched_set_normal(que->task, -20);
-	sched_set_fifo_low(que->task);
+	sched_set_normal(que->task, -20);
 	get_task_struct(que->task);
 	atomic_set(&que->disable, 0);
 	wake_up_process(que->task);

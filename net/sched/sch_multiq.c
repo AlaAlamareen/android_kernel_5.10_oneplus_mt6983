@@ -152,6 +152,7 @@ multiq_reset(struct Qdisc *sch)
 
 	for (band = 0; band < q->bands; band++)
 		qdisc_reset(q->queues[band]);
+	sch->q.qlen = 0;
 	q->curband = 0;
 }
 
@@ -185,7 +186,7 @@ static int multiq_tune(struct Qdisc *sch, struct nlattr *opt,
 
 	qopt->bands = qdisc_dev(sch)->real_num_tx_queues;
 
-	removed = kmalloc(sizeof(*removed) * (q->max_bands - qopt->bands),
+	removed = kmalloc(sizeof(*removed) * (q->max_bands - q->bands),
 			  GFP_KERNEL);
 	if (!removed)
 		return -ENOMEM;

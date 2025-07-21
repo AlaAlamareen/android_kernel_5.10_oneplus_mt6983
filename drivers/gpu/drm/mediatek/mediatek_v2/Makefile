@@ -150,9 +150,7 @@ subdir-ccflags-y += -I$(srctree)/drivers/staging/android/ion/ \
 ccflags-y += -DNOT_SUPPORT_CABC_HW
 ccflags-y += -DDISP_MDP_COLOR_ON
 ccflags-y += -DCCORR_SUPPORT
-#ifdef OPLUS_FEATURE_DISPLAY
 ccflags-y += -DOPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION
-#endif OPLUS_FEATURE_DISPLAY
 
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/

@@ -79,14 +79,12 @@ extern int (*tp_gesture_enable_notifier)(unsigned int tp_index);
 #define  M_DELAY(n) usleep_range(n*1000, n*1000+100)
 #define  U_DELAY(n) usleep_range(n, n+10)
 
-#define HFP_144HZ (54)
-#define HFP_90HZ (172)
+#define HFP_144_90 (54)
 #define HFP_120_60_30 (170)
 #define HSA (28)
 #define HBP (26)
-#define HBP_90HZ (130)
 #define VFP (26)
-#define VFP_90HZ (768)
+#define VFP_90HZ (1364)
 #define VFP_144HZ (26)
 #define VFP_60HZ (2250)
 #define VFP_120HZ (26)
@@ -98,16 +96,16 @@ extern int (*tp_gesture_enable_notifier)(unsigned int tp_index);
 
 unsigned int level_backup = 0;
 static const struct drm_display_mode hand_display_mode_90hz = {
-	//fhd_sdc_90_mode
-	.clock = 835522, //3130*2966*90 htotal*vtotal*fps
+	//fhd_sdc_144_mode
+	.clock = 932246, //2908*3539*90 htotal*vtotal*fps
 	.hdisplay = HAC_FHD,
-	.hsync_start = HAC_FHD + HFP_90HZ,
-	.hsync_end = HAC_FHD + HFP_90HZ + HSA,
-	.htotal = HAC_FHD + HFP_90HZ + HSA + HBP_90HZ,//3130
+	.hsync_start = HAC_FHD + HFP_144_90,
+	.hsync_end = HAC_FHD + HFP_144_90 + HSA,
+	.htotal = HAC_FHD + HFP_144_90 + HSA + HBP,//2908
 	.vdisplay = VAC_FHD,
 	.vsync_start = VAC_FHD + VFP_90HZ,
 	.vsync_end = VAC_FHD + VFP_90HZ + VSA,
-	.vtotal = VAC_FHD + VFP_90HZ + VSA + VBP, //2966
+	.vtotal = VAC_FHD + VFP_90HZ + VSA + VBP, //3539
 	.hskew = 1,
 };
 
@@ -115,9 +113,9 @@ static const struct drm_display_mode hand_display_mode_144hz = {
 	//fhd_sdc_144_mode
 	.clock = 931104, //2908*2224*144  htotal*vtotal*fps
 	.hdisplay = HAC_FHD,
-	.hsync_start = HAC_FHD + HFP_144HZ,
-	.hsync_end = HAC_FHD + HFP_144HZ + HSA,
-	.htotal = HAC_FHD + HFP_144HZ + HSA + HBP,//2908
+	.hsync_start = HAC_FHD + HFP_144_90,
+	.hsync_end = HAC_FHD + HFP_144_90 + HSA,
+	.htotal = HAC_FHD + HFP_144_90 + HSA + HBP,//2908
 	.vdisplay = VAC_FHD,
 	.vsync_start = VAC_FHD + VFP_144HZ,
 	.vsync_end = VAC_FHD + VFP_144HZ + VSA,
@@ -141,7 +139,7 @@ static const struct drm_display_mode pan_display_mode_60hz = {
 
 static const struct drm_display_mode pan_display_mode_120hz = {
 	//fhd_sdc_120_mode
-	.clock = 807045, //2894*2224*120 htotal*vtotal*fps  3024*2224*120=807045
+	.clock = 807045, //2894*2224*144 htotal*vtotal*fps  3024*2224*120=807045
 	.hdisplay = HAC_FHD,
 	.hsync_start = HAC_FHD + HFP_120_60_30,
 	.hsync_end = HAC_FHD + HFP_120_60_30 + HSA,
@@ -529,79 +527,6 @@ struct LCM_setting_table_by_type lcd_init_cmd[] = {
 	{TYPE_DCS, 0x07, {0xCC, 0xA5, 0x5A, 0x00, 0x55, 0x00, 0x00}},
 	{TYPE_DCS, 0x02, {0xD0, 0x84}},
 
-	/* config display 90Hz, tp 240Hz */
-	{TYPE_DCS, 0x02, {0xFF, 0x22}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0x9F, 0x8C}},
-	{TYPE_DCS, 0x02, {0xA0, 0x04}},
-	{TYPE_DCS, 0x02, {0xA6, 0x06}},
-	{TYPE_DCS, 0x02, {0xA9, 0x51}},
-	{TYPE_DCS, 0x02, {0xAA, 0x90}},
-	{TYPE_DCS, 0x02, {0xAB, 0x90}},
-	{TYPE_DCS, 0x02, {0xAD, 0x01}},
-	{TYPE_DCS, 0x05, {0xB0, 0x1F, 0x1F, 0x1F, 0x1F}},
-	{TYPE_DCS, 0x05, {0xB1, 0xA0, 0xA0, 0xA0, 0xA0}},
-	{TYPE_DCS, 0x05, {0xB3, 0xBF, 0xBF, 0xBF, 0xBF}},
-	{TYPE_DCS, 0x05, {0xB4, 0x1F, 0x1F, 0x1F, 0x1F}},
-	{TYPE_DCS, 0x05, {0xB5, 0x97, 0x97, 0x97, 0x97}},
-	{TYPE_DCS, 0x02, {0xB8, 0x00}},
-	{TYPE_DCS, 0x02, {0xB9, 0x6D}},
-	{TYPE_DCS, 0x02, {0xBA, 0x6D}},
-	{TYPE_DCS, 0x02, {0xBB, 0x6D}},
-	{TYPE_DCS, 0x02, {0xBC, 0x01}},
-	{TYPE_DCS, 0x02, {0xBD, 0xF5}},
-	{TYPE_DCS, 0x02, {0xBE, 0x0B}},
-	{TYPE_DCS, 0x02, {0xBF, 0x6D}},
-	{TYPE_DCS, 0x02, {0xC1, 0x6D}},
-	{TYPE_DCS, 0x02, {0xC3, 0x6D}},
-	{TYPE_DCS, 0x02, {0x6F, 0x03}},
-	{TYPE_DCS, 0x02, {0x70, 0x33}},
-	{TYPE_DCS, 0x02, {0xFF, 0x25}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0xBC, 0x02}},
-	{TYPE_DCS, 0x02, {0xBD, 0x1B}},
-	{TYPE_DCS, 0x02, {0xBE, 0x02}},
-	{TYPE_DCS, 0x02, {0xBF, 0x67}},
-	{TYPE_DCS, 0x02, {0xF6, 0x02}},
-	{TYPE_DCS, 0x02, {0xF7, 0x67}},
-	{TYPE_DCS, 0x02, {0xFF, 0x27}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0x00, 0x81}},
-	{TYPE_DCS, 0x02, {0x01, 0x2D}},
-	{TYPE_DCS, 0x02, {0x03, 0xC4}},
-	{TYPE_DCS, 0x02, {0x05, 0x04}},
-	{TYPE_DCS, 0x02, {0x06, 0x0B}},
-	{TYPE_DCS, 0x02, {0x07, 0x03}},
-	{TYPE_DCS, 0x03, {0x08, 0xD3, 0x09}},
-	{TYPE_DCS, 0x03, {0x09, 0x2A, 0x00}},
-	{TYPE_DCS, 0x03, {0x0A, 0x58, 0x40}},
-	{TYPE_DCS, 0x03, {0x0B, 0x12, 0x00}},
-	{TYPE_DCS, 0x03, {0x0C, 0x4D, 0x00}},
-	{TYPE_DCS, 0x03, {0x0D, 0x25, 0x00}},
-	{TYPE_DCS, 0x03, {0x0E, 0x58, 0x40}},
-	{TYPE_DCS, 0x03, {0x0F, 0x12, 0x00}},
-	{TYPE_DCS, 0x03, {0x10, 0x4D, 0x00}},
-	{TYPE_DCS, 0x02, {0xFF, 0x22}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0xCA, 0x02}},
-	{TYPE_DCS, 0x02, {0xCF, 0x02}},
-	{TYPE_DCS, 0x02, {0xD3, 0x02}},
-	{TYPE_DCS, 0x02, {0xCB, 0x5A}},
-	{TYPE_DCS, 0x02, {0xD0, 0x5A}},
-	{TYPE_DCS, 0x02, {0xD4, 0x5A}},
-	{TYPE_DCS, 0x02, {0xC6, 0x5A}},
-	{TYPE_DCS, 0x02, {0xC7, 0x5E}},
-	{TYPE_DCS, 0x02, {0xFF, 0x22}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0x94, 0x09}},
-	{TYPE_DCS, 0x02, {0xFF, 0x23}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0x73, 0x09}},
-	{TYPE_DCS, 0x02, {0x74, 0x09}},
-	{TYPE_DCS, 0x02, {0xFF, 0x26}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x04, {0x85, 0x21, 0x21, 0x21}},
-
 	{TYPE_DCS, 0x02, {0xFF, 0x10}},
 	{TYPE_DCS, 0x02, {0xFB, 0x01}},
 	{TYPE_DCS, 0x03, {0x51, 0x07, 0xFF}},
@@ -634,18 +559,11 @@ struct LCM_setting_table_by_type set_60Hz_120Hz_init[] = {
 	{TYPE_DCS, 0x02, {0xB3, 0x40}}
 };
 
-struct LCM_setting_table_by_type set_144Hz_init[] = {
+struct LCM_setting_table_by_type set_90Hz_144Hz_init[] = {
 	{TYPE_DCS, 0x02, {0xFF, 0x10}},
 	{TYPE_DCS, 0x02, {0xFB, 0x01}},
 	{TYPE_DCS, 0x02, {0xB2, 0x00}},
 	{TYPE_DCS, 0x02, {0xB3, 0x00}}
-};
-
-struct LCM_setting_table_by_type set_90Hz_init[] = {
-	{TYPE_DCS, 0x02, {0xFF, 0x10}},
-	{TYPE_DCS, 0x02, {0xFB, 0x01}},
-	{TYPE_DCS, 0x02, {0xB2, 0x00}},
-	{TYPE_DCS, 0x02, {0xB3, 0x80}}
 };
 
 struct LCM_setting_table_by_type lcd_sleep_out[] = {
@@ -792,13 +710,9 @@ static void lcm_panel_init_on(struct lcm *ctx)
 		for (i = 0; i < sizeof(set_60Hz_120Hz_init) / sizeof(struct LCM_setting_table_by_type); i++) {
 			lcm_init_write_by_type(ctx, set_60Hz_120Hz_init[i]);
 		}
-	} else if (g_fps_current == 90) {
-		for (i = 0; i < sizeof(set_90Hz_init) / sizeof(struct LCM_setting_table_by_type); i++) {
-			lcm_init_write_by_type(ctx, set_90Hz_init[i]);
-		}
-	} else if (g_fps_current == 144) {
-		for (i = 0; i < sizeof(set_144Hz_init) / sizeof(struct LCM_setting_table_by_type); i++) {
-			lcm_init_write_by_type(ctx, set_144Hz_init[i]);
+	} else if ((g_fps_current == 90) || (g_fps_current == 144)) {
+		for (i = 0; i < sizeof(set_90Hz_144Hz_init) / sizeof(struct LCM_setting_table_by_type); i++) {
+			lcm_init_write_by_type(ctx, set_90Hz_144Hz_init[i]);
 		}
 	}
 
@@ -1276,7 +1190,6 @@ static struct mtk_panel_params ext_params_pan_60hz= {
 	.data_rate_khz = 1108090,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
-	.esd_te_check_gpio = 1,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
 	.change_fps_by_vfp_send_cmd = 0,
@@ -1413,9 +1326,9 @@ static struct mtk_panel_params ext_params_pan_120hz= {
 	.data_rate = 1108,//(92+20+96+2800/2)*(26+2+196+2000)*8*144/4
 	.vdo_per_frame_lp_enable = 1,
 	.data_rate_khz = 1108090,
+
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
-	.esd_te_check_gpio = 1,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
 	.change_fps_by_vfp_send_cmd = 0,
@@ -1555,7 +1468,6 @@ static struct mtk_panel_params ext_params_pan_30hz= {
 	.data_rate_khz = 1108090,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
-	.esd_te_check_gpio = 1,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
 	.change_fps_by_vfp_send_cmd = 0,
@@ -1693,7 +1605,6 @@ static struct mtk_panel_params ext_params_hand_90hz= {
 	.data_rate_khz = 1108090,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
-	.esd_te_check_gpio = 1,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
 	.change_fps_by_vfp_send_cmd = 0,
@@ -1703,11 +1614,11 @@ static struct mtk_panel_params ext_params_hand_90hz= {
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x00} },
-		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x80} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x00} },
 	},
 	.dyn = {
 		.switch_en = 1,
-		.hfp = HFP_90HZ,
+		.hfp = HFP_144_90,
 		.vfp = VFP_90HZ,
 	},
 	.phy_timcon = {
@@ -1831,7 +1742,6 @@ static struct mtk_panel_params ext_params_hand_144hz= {
 	.data_rate_khz = 1108090,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
-	.esd_te_check_gpio = 1,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
 	.change_fps_by_vfp_send_cmd = 0,
@@ -1845,7 +1755,7 @@ static struct mtk_panel_params ext_params_hand_144hz= {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.hfp = HFP_144HZ,
+		.hfp = HFP_144_90,
 		.vfp = VFP_144HZ,
 	},
 	.phy_timcon = {

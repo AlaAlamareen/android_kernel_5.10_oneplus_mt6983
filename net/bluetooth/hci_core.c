@@ -843,9 +843,14 @@ static int hci_init4_req(struct hci_request *req, unsigned long opt)
 	if (hdev->commands[30] & 0x08)
 		hci_req_add(req, HCI_OP_GET_MWS_TRANSPORT_CONFIG, 0, NULL);
 
+	/* Halium: BT chip returns error for HCI_OP_READ_SYNC_TRAIN_PARAMS,
+	 * which causes the initialization to fail. As this feature is not used
+	 * anywhere, skipping reading the parameters should be safe. */
+#if 0
 	/* Check for Synchronization Train support */
 	if (lmp_sync_train_capable(hdev))
 		hci_req_add(req, HCI_OP_READ_SYNC_TRAIN_PARAMS, 0, NULL);
+#endif
 
 	/* Enable Secure Connections if supported and configured */
 	if (hci_dev_test_flag(hdev, HCI_SSP_ENABLED) &&
@@ -1623,7 +1628,6 @@ setup_failed:
 			hdev->flush(hdev);
 
 		if (hdev->sent_cmd) {
-			cancel_delayed_work_sync(&hdev->cmd_timer);
 			kfree_skb(hdev->sent_cmd);
 			hdev->sent_cmd = NULL;
 		}
@@ -2343,9 +2347,9 @@ void hci_uuids_clear(struct hci_dev *hdev)
 
 void hci_link_keys_clear(struct hci_dev *hdev)
 {
-	struct link_key *key, *tmp;
+	struct link_key *key;
 
-	list_for_each_entry_safe(key, tmp, &hdev->link_keys, list) {
+	list_for_each_entry(key, &hdev->link_keys, list) {
 		list_del_rcu(&key->list);
 		kfree_rcu(key, rcu);
 	}
@@ -2353,9 +2357,9 @@ void hci_link_keys_clear(struct hci_dev *hdev)
 
 void hci_smp_ltks_clear(struct hci_dev *hdev)
 {
-	struct smp_ltk *k, *tmp;
+	struct smp_ltk *k;
 
-	list_for_each_entry_safe(k, tmp, &hdev->long_term_keys, list) {
+	list_for_each_entry(k, &hdev->long_term_keys, list) {
 		list_del_rcu(&k->list);
 		kfree_rcu(k, rcu);
 	}
@@ -2363,9 +2367,9 @@ void hci_smp_ltks_clear(struct hci_dev *hdev)
 
 void hci_smp_irks_clear(struct hci_dev *hdev)
 {
-	struct smp_irk *k, *tmp;
+	struct smp_irk *k;
 
-	list_for_each_entry_safe(k, tmp, &hdev->identity_resolving_keys, list) {
+	list_for_each_entry(k, &hdev->identity_resolving_keys, list) {
 		list_del_rcu(&k->list);
 		kfree_rcu(k, rcu);
 	}
@@ -2373,9 +2377,9 @@ void hci_smp_irks_clear(struct hci_dev *hdev)
 
 void hci_blocked_keys_clear(struct hci_dev *hdev)
 {
-	struct blocked_key *b, *tmp;
+	struct blocked_key *b;
 
-	list_for_each_entry_safe(b, tmp, &hdev->blocked_keys, list) {
+	list_for_each_entry(b, &hdev->blocked_keys, list) {
 		list_del_rcu(&b->list);
 		kfree_rcu(b, rcu);
 	}
@@ -2685,10 +2689,10 @@ int hci_remove_link_key(struct hci_dev *hdev, bdaddr_t *bdaddr)
 
 int hci_remove_ltk(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 bdaddr_type)
 {
-	struct smp_ltk *k, *tmp;
+	struct smp_ltk *k;
 	int removed = 0;
 
-	list_for_each_entry_safe(k, tmp, &hdev->long_term_keys, list) {
+	list_for_each_entry_rcu(k, &hdev->long_term_keys, list) {
 		if (bacmp(bdaddr, &k->bdaddr) || k->bdaddr_type != bdaddr_type)
 			continue;
 
@@ -2704,9 +2708,9 @@ int hci_remove_ltk(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 bdaddr_type)
 
 void hci_remove_irk(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 addr_type)
 {
-	struct smp_irk *k, *tmp;
+	struct smp_irk *k;
 
-	list_for_each_entry_safe(k, tmp, &hdev->identity_resolving_keys, list) {
+	list_for_each_entry_rcu(k, &hdev->identity_resolving_keys, list) {
 		if (bacmp(bdaddr, &k->bdaddr) || k->addr_type != addr_type)
 			continue;
 
@@ -3797,8 +3801,7 @@ int hci_register_dev(struct hci_dev *hdev)
 	hci_sock_dev_event(hdev, HCI_DEV_REG);
 	hci_dev_hold(hdev);
 
-	if (!hdev->suspend_notifier.notifier_call &&
-	    !test_bit(HCI_QUIRK_NO_SUSPEND_NOTIFIER, &hdev->quirks)) {
+	if (!test_bit(HCI_QUIRK_NO_SUSPEND_NOTIFIER, &hdev->quirks)) {
 		hdev->suspend_notifier.notifier_call = hci_suspend_notifier;
 		error = register_pm_notifier(&hdev->suspend_notifier);
 		if (error)
@@ -4481,27 +4484,15 @@ static inline int __get_blocks(struct hci_dev *hdev, struct sk_buff *skb)
 	return DIV_ROUND_UP(skb->len - HCI_ACL_HDR_SIZE, hdev->block_len);
 }
 
-static void __check_timeout(struct hci_dev *hdev, unsigned int cnt, u8 type)
+static void __check_timeout(struct hci_dev *hdev, unsigned int cnt)
 {
-	unsigned long last_tx;
-
-	if (hci_dev_test_flag(hdev, HCI_UNCONFIGURED))
-		return;
-
-	switch (type) {
-	case LE_LINK:
-		last_tx = hdev->le_last_tx;
-		break;
-	default:
-		last_tx = hdev->acl_last_tx;
-		break;
+	if (!hci_dev_test_flag(hdev, HCI_UNCONFIGURED)) {
+		/* ACL tx timeout must be longer than maximum
+		 * link supervision timeout (40.9 seconds) */
+		if (!cnt && time_after(jiffies, hdev->acl_last_tx +
+				       HCI_ACL_TX_TIMEOUT))
+			hci_link_tx_to(hdev, ACL_LINK);
 	}
-
-	/* tx timeout must be longer than maximum link supervision timeout
-	 * (40.9 seconds)
-	 */
-	if (!cnt && time_after(jiffies, last_tx + HCI_ACL_TX_TIMEOUT))
-		hci_link_tx_to(hdev, type);
 }
 
 /* Schedule SCO */
@@ -4559,7 +4550,7 @@ static void hci_sched_acl_pkt(struct hci_dev *hdev)
 	struct sk_buff *skb;
 	int quote;
 
-	__check_timeout(hdev, cnt, ACL_LINK);
+	__check_timeout(hdev, cnt);
 
 	while (hdev->acl_cnt &&
 	       (chan = hci_chan_sent(hdev, ACL_LINK, &quote))) {
@@ -4602,14 +4593,14 @@ static void hci_sched_acl_blk(struct hci_dev *hdev)
 	int quote;
 	u8 type;
 
+	__check_timeout(hdev, cnt);
+
 	BT_DBG("%s", hdev->name);
 
 	if (hdev->dev_type == HCI_AMP)
 		type = AMP_LINK;
 	else
 		type = ACL_LINK;
-
-	__check_timeout(hdev, cnt, type);
 
 	while (hdev->block_cnt > 0 &&
 	       (chan = hci_chan_sent(hdev, type, &quote))) {
@@ -4684,7 +4675,7 @@ static void hci_sched_le(struct hci_dev *hdev)
 
 	cnt = hdev->le_pkts ? hdev->le_cnt : hdev->acl_cnt;
 
-	__check_timeout(hdev, cnt, LE_LINK);
+	__check_timeout(hdev, cnt);
 
 	tmp = cnt;
 	while (cnt && (chan = hci_chan_sent(hdev, LE_LINK, &quote))) {
@@ -4908,7 +4899,7 @@ void hci_req_cmd_complete(struct hci_dev *hdev, u16 opcode, u8 status,
 			*req_complete_skb = bt_cb(skb)->hci.req_complete_skb;
 		else
 			*req_complete = bt_cb(skb)->hci.req_complete;
-		dev_kfree_skb_irq(skb);
+		kfree_skb(skb);
 	}
 	spin_unlock_irqrestore(&hdev->cmd_q.lock, flags);
 }

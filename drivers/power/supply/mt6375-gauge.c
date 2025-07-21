@@ -3706,9 +3706,7 @@ int fakeoff_out_data[5] = {0, 0, 0, 0, 0};
 		if ((oplus_chg_check_ui_soc() == 0) && (gm->init_flag == 1))
 			fakeoff_out_data[0] = gm->ui_soc;
 		fakeoff_out_data[1] = oplus_chg_get_notify_flag();
-		if (oplus_mt_get_vbus_status() == true
-			&& oplus_get_prop_status() != POWER_SUPPLY_STATUS_NOT_CHARGING
-			&& oplus_get_prop_status() != POWER_SUPPLY_STATUS_DISCHARGING) {
+		if (oplus_mt_get_vbus_status() == true && oplus_get_prop_status() != POWER_SUPPLY_STATUS_NOT_CHARGING) {
 			fakeoff_out_data[2] = POWER_SUPPLY_STATUS_CHARGING;
 		} else {
 			fakeoff_out_data[2] = POWER_SUPPLY_STATUS_UNKNOWN;

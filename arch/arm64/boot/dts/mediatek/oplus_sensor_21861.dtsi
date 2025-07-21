@@ -176,12 +176,6 @@
 			status = "okay";
 			new-arch-supported = <1>;
 		};
-		pocket: pocket {
-			status = "okay";
-			support_pocket = <1>;
-			use_sub_accgyro = <0>;
-			need_als = <0>;
-		};
 	};
 /* sensor end */
 };

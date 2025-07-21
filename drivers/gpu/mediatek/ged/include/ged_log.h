@@ -108,7 +108,4 @@ extern void ged_dump_fw(void);
 
 unsigned int is_gpu_ged_log_enable(void);
 
-
-unsigned int force_fence_timeout_dump(bool reset);
-
 #endif

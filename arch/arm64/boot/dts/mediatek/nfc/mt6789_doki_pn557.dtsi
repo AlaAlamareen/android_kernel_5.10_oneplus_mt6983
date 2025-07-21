@@ -7,7 +7,6 @@
 		compatible = "oplus-nfc-chipset";
 		chipset-22689 = "PN557";
 		chipset-2269E = "PN557";
-		chipset-23676 = "PN557";
 	};
 };
 

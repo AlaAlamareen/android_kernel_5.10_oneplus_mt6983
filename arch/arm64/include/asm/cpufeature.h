@@ -662,8 +662,7 @@ static inline bool system_supports_4kb_granule(void)
 	val = cpuid_feature_extract_unsigned_field(mmfr0,
 						ID_AA64MMFR0_TGRAN4_SHIFT);
 
-	return (val >= ID_AA64MMFR0_TGRAN4_SUPPORTED_MIN) &&
-	       (val <= ID_AA64MMFR0_TGRAN4_SUPPORTED_MAX);
+	return val == ID_AA64MMFR0_TGRAN4_SUPPORTED;
 }
 
 static inline bool system_supports_64kb_granule(void)
@@ -675,8 +674,7 @@ static inline bool system_supports_64kb_granule(void)
 	val = cpuid_feature_extract_unsigned_field(mmfr0,
 						ID_AA64MMFR0_TGRAN64_SHIFT);
 
-	return (val >= ID_AA64MMFR0_TGRAN64_SUPPORTED_MIN) &&
-	       (val <= ID_AA64MMFR0_TGRAN64_SUPPORTED_MAX);
+	return val == ID_AA64MMFR0_TGRAN64_SUPPORTED;
 }
 
 static inline bool system_supports_16kb_granule(void)
@@ -688,8 +686,7 @@ static inline bool system_supports_16kb_granule(void)
 	val = cpuid_feature_extract_unsigned_field(mmfr0,
 						ID_AA64MMFR0_TGRAN16_SHIFT);
 
-	return (val >= ID_AA64MMFR0_TGRAN16_SUPPORTED_MIN) &&
-	       (val <= ID_AA64MMFR0_TGRAN16_SUPPORTED_MAX);
+	return val == ID_AA64MMFR0_TGRAN16_SUPPORTED;
 }
 
 static inline bool system_supports_mixed_endian_el0(void)

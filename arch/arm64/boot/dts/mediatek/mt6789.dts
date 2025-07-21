@@ -61,7 +61,7 @@
 			8250.nr_uarts=4 \
 			androidboot.hardware=mt6789 \
 			initcall_debug=1 transparent_hugepage=never \
-			vmalloc=400M swiotlb=noforce \
+			vmalloc=400M swiotlb=noforce cma=64M \
 			log_buf_len=2m \
 			firmware_class.path=/vendor/firmware pelt=8\
 			loop.max_part=7";
@@ -449,10 +449,10 @@
 		compatible = "mediatek,memory-ssmr-features";
 		svp-region-based-size = <0 0x18000000>;
 		svp-page-based-size = <0 0>;
-		tui-size = <0 0>;
+		tui-size = <0 0x4000000>;
 		wfd-region-based-size = <0 0x4000000>;
 		wfd-page-based-size = <0 0>;
-		prot-region-based-size = <0 0>;
+		prot-region-based-size = <0 0x8000000>;
 		prot-page-based-size = <0 0>;
 	};
 
@@ -1863,10 +1863,10 @@
 			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN>,
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
 			<&mdpsys_config_clk CLK_MDP_SMI0>,
-			<&dispsys_config_clk CLK_SMI_INFRA>,
-			<&dispsys_config_clk CLK_SMI_COMMON>,
-			<&dispsys_config_clk CLK_SMI_GALS>,
-			<&dispsys_config_clk CLK_SMI_IOMMU>,
+			<&dispsys_config_clk CLK_MM_SMI_INFRA>,
+			<&dispsys_config_clk CLK_MM_SMI_COMMON>,
+			<&dispsys_config_clk CLK_MM_SMI_GALS>,
+			<&dispsys_config_clk CLK_MM_SMI_IOMMU>,
 			<&infracfg_ao_clk CLK_IFRAO_AUDIO_26M_BCLK>,
 			<&infracfg_ao_clk CLK_IFRAO_AUDIO>,
 			<&camsys_main_clk CLK_CAM_M_LARB13>,
@@ -2331,16 +2331,6 @@
 
 	flashlight_core: flashlight_core {
 		compatible = "mediatek,flashlight_core";
-	};
-
-	flashlights_24267: flashlights_24267 {
-		compatible = "mediatek,flashlights_24267";
-		decouple = <1>;
-		channel@1 {
-			type = <0>;
-			ct = <0>;
-			part = <0>;
-		};
 	};
 
 	mtk_composite_v4l2_1: mtk_composite_v4l2_1 {
@@ -4264,10 +4254,10 @@
 					"aud_dat_miso0_on",
 					"aud_dat_miso1_off",
 					"aud_dat_miso1_on",
-					"aud_gpio_i2s2_off",
-					"aud_gpio_i2s2_on",
-					"aud_gpio_i2s1_off",
-					"aud_gpio_i2s1_on",
+					"aud_gpio_i2s0_off",
+					"aud_gpio_i2s0_on",
+					"aud_gpio_i2s3_off",
+					"aud_gpio_i2s3_on",
 					"vow_dat_miso_off",
 					"vow_dat_miso_on",
 					"vow_clk_miso_off",
@@ -4283,10 +4273,10 @@
 			pinctrl-7 = <&aud_dat_miso0_on>;
 			pinctrl-8 = <&aud_dat_miso1_off>;
 			pinctrl-9 = <&aud_dat_miso1_on>;
-			pinctrl-10 = <&aud_gpio_i2s2_off>;
-			pinctrl-11 = <&aud_gpio_i2s2_on>;
-			pinctrl-12 = <&aud_gpio_i2s1_off>;
-			pinctrl-13 = <&aud_gpio_i2s1_on>;
+			pinctrl-10 = <&aud_gpio_i2s0_off>;
+			pinctrl-11 = <&aud_gpio_i2s0_on>;
+			pinctrl-12 = <&aud_gpio_i2s3_off>;
+			pinctrl-13 = <&aud_gpio_i2s3_on>;
 			pinctrl-14 = <&vow_dat_miso_off>;
 			pinctrl-15 = <&vow_dat_miso_on>;
 			pinctrl-16 = <&vow_clk_miso_off>;
@@ -4335,10 +4325,6 @@
 			compatible = "mediatek,snd_scp_audio";
 			status = "disabled";
 			scp_spk_process_enable = <0x0 0x4 0xf 0x13>;
-		};
-
-		audio_extend: audio_extend {
-			compatible = "oplus,asoc-audio";
 		};
 
 		sound: sound {
@@ -5160,7 +5146,6 @@
 				"MTK_DRM_OPT_AOD",
 				"MTK_DRM_OPT_RPO",
 				"MTK_DRM_OPT_DUAL_PIPE",
-				"MTK_DRM_OPT_PAPER_MODE",
 				"MTK_DRM_OPT_DC_BY_HRT",
 				"MTK_DRM_OPT_OVL_WCG",
 				"MTK_DRM_OPT_OVL_SBCH",
@@ -5209,7 +5194,6 @@
 				<0>, /*MTK_DRM_OPT_AOD*/
 				<1>, /*MTK_DRM_OPT_RPO*/
 				<0>, /*MTK_DRM_OPT_DUAL_PIPE*/
-				<0>, /*MTK_DRM_OPT_PAPER_MODE*/
 				<0>, /*MTK_DRM_OPT_DC_BY_HRT*/
 				<0>, /*MTK_DRM_OPT_OVL_WCG*/
 				<0>, /*MTK_DRM_OPT_OVL_SBCH*/
@@ -7461,11 +7445,9 @@
 				      <&mt6375_adc MT6375_ADC_SBU2>;
 			charger = <&mt6375_chg>;
 			boot_mode = <&chosen>;
-			/* #ifdef OPLUS_FEATURE_CHG_BASIC */
-			/* tcpc,en_wd; */
-			/* tcpc,en_wd_sbu_polling; */
-			/* tcpc,en_wd_polling_only; */
-			/* #endif */
+			tcpc,en_wd;
+			tcpc,en_wd_sbu_polling;
+			tcpc,en_wd_polling_only;
 			tcpc,en_ctd;
 			tcpc,en_fod;
 			tcpc,en_typec_otp;
@@ -7756,21 +7738,21 @@
 			bias-disable;
 		};
 	};
-	aud_gpio_i2s2_off: aud_gpio_i2s2_off {
+	aud_gpio_i2s0_off: aud_gpio_i2s0_off {
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO53__FUNC_GPIO53>;
 			input-enable;
 			bias-pull-down;
 		};
 	};
-	aud_gpio_i2s2_on: aud_gpio_i2s2_on {
+	aud_gpio_i2s0_on: aud_gpio_i2s0_on {
 		pins_cmd1_dat {
-			pinmux = <PINMUX_GPIO53__FUNC_I2S2_DI>;
+			pinmux = <PINMUX_GPIO53__FUNC_I2S0_DI>;
 			input-schmitt-enable;
 			bias-disable;
 		};
 	};
-	aud_gpio_i2s1_off: aud_gpio_i2s1_off {
+	aud_gpio_i2s3_off: aud_gpio_i2s3_off {
 		pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO50__FUNC_GPIO50>;
 			input-enable;
@@ -7787,19 +7769,19 @@
 			bias-pull-down;
 		};
 	};
-	aud_gpio_i2s1_on: aud_gpio_i2s1_on {
+	aud_gpio_i2s3_on: aud_gpio_i2s3_on {
 		pins_cmd1_dat {
-			pinmux = <PINMUX_GPIO50__FUNC_I2S1_DO>;
+			pinmux = <PINMUX_GPIO50__FUNC_I2S3_DO>;
 			input-schmitt-enable;
 			bias-disable;
 		};
 		pins_cmd2_dat {
-			pinmux = <PINMUX_GPIO51__FUNC_I2S1_BCK>;
+			pinmux = <PINMUX_GPIO51__FUNC_I2S3_BCK>;
 			input-schmitt-enable;
 			bias-disable;
 		};
 		pins_cmd3_dat {
-			pinmux = <PINMUX_GPIO52__FUNC_I2S1_LRCK>;
+			pinmux = <PINMUX_GPIO52__FUNC_I2S3_LRCK>;
 			input-schmitt-enable;
 			bias-disable;
 		};

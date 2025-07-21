@@ -243,13 +243,13 @@ static inline void compat_start_thread(struct pt_regs *regs, unsigned long pc,
 }
 #endif
 
-static __always_inline bool is_ttbr0_addr(unsigned long addr)
+static inline bool is_ttbr0_addr(unsigned long addr)
 {
 	/* entry assembly clears tags for TTBR0 addrs */
 	return addr < TASK_SIZE;
 }
 
-static __always_inline bool is_ttbr1_addr(unsigned long addr)
+static inline bool is_ttbr1_addr(unsigned long addr)
 {
 	/* TTBR1 addresses may have a tag if KASAN_SW_TAGS is in use */
 	return arch_kasan_reset_tag(addr) >= PAGE_OFFSET;
@@ -262,8 +262,6 @@ struct task_struct;
 extern void release_thread(struct task_struct *);
 
 unsigned long get_wchan(struct task_struct *p);
-
-unsigned long get_backtrace(struct task_struct *p, int i);
 
 void update_sctlr_el1(u64 sctlr);
 

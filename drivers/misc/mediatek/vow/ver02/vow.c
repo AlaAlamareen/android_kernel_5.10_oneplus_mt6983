@@ -699,11 +699,6 @@ static int vow_service_GetParameter(unsigned long arg)
 		//ignore aispeech model size
 		VOWDRV_DEBUG("ignore vow Modle size check in case of aispeech %d\n", vow_info_ap[3]);
 	}
-	else if(VENDOR_ID_BREENO == vow_info_ap[5]) {
-		//ignore breeno model size
-		VOWDRV_DEBUG("ignore vow Modle size check in case of breeno %d\n", 
-			     (unsigned int)vow_info_ap[3]);
-	}
 	else if (vow_info_ap[3] > VOW_MODEL_SIZE ||
 	    vow_info_ap[3] < VOW_MODEL_SIZE_THRES) {
 		VOWDRV_DEBUG("vow Modle Size is incorrect %d\n",
@@ -874,7 +869,7 @@ static bool vow_service_ReleaseSpeakerModel(int id)
 
 	if (I == -1) {
 		VOWDRV_DEBUG("vow release Speaker Model Fail, id:%x\n", id);
-		return true;
+		return false;
 	}
 	VOWDRV_DEBUG("vow ReleaseSpeakerModel:id_%x, slot_%d\n", id, I);
 
@@ -3068,7 +3063,13 @@ exit:
 
 static int VowDrv_flush(struct file *flip, fl_owner_t id)
 {
-	VOWDRV_DEBUG("%s()\n", __func__);
+	bool ret = false;
+
+	VOWDRV_DEBUG("%s(), Send VOW_FLUSH ipi\n", __func__);
+
+	ret = vow_ipi_send(IPIMSG_VOW_FLUSH, 0, NULL, VOW_IPI_BYPASS_ACK);
+	if (ret == 0)
+		VOWDRV_DEBUG("IPIMSG_VOW_FLUSH ipi send error\n\r");
 	return 0;
 }
 

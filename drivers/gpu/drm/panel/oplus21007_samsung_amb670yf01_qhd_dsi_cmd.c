@@ -691,7 +691,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.clk_trail = 14,
 			.hs_trail = 11,
 		},
-			.panel_bpp = 10,
+
 		},
 		//fhd_sdc_120_mode
 		{
@@ -781,7 +781,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.clk_trail = 14,
 				.hs_trail = 11,
 			},
-			.panel_bpp = 10,
+
 		},
 		//fhd_sdc_90_mode
 		{
@@ -871,7 +871,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.clk_trail = 14,
 			.hs_trail = 11,
 		},
-			.panel_bpp = 10,
+
 		},
 		//fhd_oa_120_mode
 		{
@@ -954,7 +954,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.clk_trail = 14,
 			.hs_trail = 11,
 		},
-			.panel_bpp = 10,
+
 		},
 
 	//wqhd_sdc_60_mode
@@ -1042,7 +1042,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_tp_size_r =  sizeof(top_rc_2k_pattern_r),
 		.corner_pattern_lt_addr_r = (void *)top_rc_2k_pattern_r,
 #endif
-		.panel_bpp = 10,
 	},
 	//wqhd_sdc_120_mode
 	{
@@ -1131,7 +1130,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_tp_size_r =  sizeof(top_rc_2k_pattern_r),
 		.corner_pattern_lt_addr_r = (void *)top_rc_2k_pattern_r,
 #endif
-		.panel_bpp = 10,
 	},
 	//wqhd_sdc_90_mode
 	{
@@ -1219,7 +1217,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_tp_size_r =  sizeof(top_rc_2k_pattern_r),
 		.corner_pattern_lt_addr_r = (void *)top_rc_2k_pattern_r,
 #endif
-		.panel_bpp = 10,
 	},
 	//wqhd_oa_120_mode
 	{
@@ -1301,7 +1298,6 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_tp_size_r =  sizeof(top_rc_2k_pattern_r),
 		.corner_pattern_lt_addr_r = (void *)top_rc_2k_pattern_r,
 #endif
-		.panel_bpp = 10,
 	},
 };
 
@@ -1692,10 +1688,6 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 
 	if (!cb)
 		return -EINVAL;
-	if (level > HBM_BASE_800NIT) {
-		level = HBM_BASE_800NIT;
-		DISP_ERR("set backlight oversize, change it to max value\n");
-	}
 
 	mapped_level = level;
 	esd_brightness = mapped_level;
@@ -2366,6 +2358,6 @@ static struct mipi_dsi_driver lcm_driver = {
 
 module_mipi_dsi_driver(lcm_driver);
 
-MODULE_AUTHOR("lianghao <lianghao1@oplus.com>");
+MODULE_AUTHOR("lianghao");
 MODULE_DESCRIPTION("lcm amb670 yf01 Panel Driver");
 MODULE_LICENSE("GPL v2");

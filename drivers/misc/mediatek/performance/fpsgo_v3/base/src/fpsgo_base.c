@@ -37,10 +37,6 @@
 #include <trace/trace.h>
 #include "sched/sched.h"
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
-#include <../kernel/oplus_cpu/sched/sched_assist/sa_pipeline.h>
-#endif
-
 #define TIME_1S  1000000000ULL
 #define TIME_100MS  100000000ULL
 #define TRAVERSE_PERIOD  300000000000ULL
@@ -85,10 +81,6 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	/* Prevent p going away */
 	get_task_struct(p);
 	rcu_read_unlock();
-
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
-	mtk_rearrange_pipeline_preferred_cpus(p, in_mask);
-#endif
 
 	if (p->flags & PF_NO_SETAFFINITY) {
 		retval = -EINVAL;

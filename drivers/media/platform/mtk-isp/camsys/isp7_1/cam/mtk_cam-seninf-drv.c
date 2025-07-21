@@ -576,9 +576,6 @@ static int seninf_core_probe(struct platform_device *pdev)
 		dev_info(dev, "%s: failed to start seninf kthread worker\n",
 			__func__);
 		core->seninf_kworker_task = NULL;
-	} else {
-		dev_info(dev, "%s: seninf kthread worker set prio to fifo\n", __func__);
-		sched_set_fifo(core->seninf_kworker_task);
 	}
 
 	dev_info(dev, "%s\n", __func__);
@@ -1578,32 +1575,8 @@ static int mtk_cam_seninf_set_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-static int mtk_cam_seninf_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct seninf_ctx *ctx = ctrl_hdl_to_ctx(ctrl->handler);
-	int ret;
-
-	switch (ctrl->id) {
-	case V4L2_CID_GET_CSI2_IRQ_STATUS:
-		ret = mtk_cam_seninf_get_csi_irq_status(&ctx->subdev, ctrl);
-		break;
-	default:
-		ret = 0;
-		dev_info(ctx->dev, "%s Unhandled id:0x%x\n",
-			 __func__, ctrl->id);
-		break;
-	}
-
-	return ret;
-}
-#endif
-
 static const struct v4l2_ctrl_ops seninf_ctrl_ops = {
 	.s_ctrl = mtk_cam_seninf_set_ctrl,
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	.g_volatile_ctrl = mtk_cam_seninf_g_volatile_ctrl,
-#endif
 };
 
 static int seninf_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
@@ -1685,18 +1658,6 @@ static const struct v4l2_ctrl_config cfg_s_stream = {
 	.step = 1,
 };
 
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-static const struct v4l2_ctrl_config cfg_g_csi2_irq_status = {
-	.ops = &seninf_ctrl_ops,
-	.id = V4L2_CID_GET_CSI2_IRQ_STATUS,
-	.name = "get_csi2_irq_status",
-	.type = V4L2_CTRL_TYPE_INTEGER,
-	.flags = V4L2_CTRL_FLAG_READ_ONLY|V4L2_CTRL_FLAG_VOLATILE,
-	.max = 0x7fffffff,
-	.step = 1,
-};
-#endif
-
 static int seninf_initialize_controls(struct seninf_ctx *ctx)
 {
 	struct v4l2_ctrl_handler *handler;
@@ -1717,9 +1678,6 @@ static int seninf_initialize_controls(struct seninf_ctx *ctx)
 	v4l2_ctrl_new_custom(handler, &cfg_test_streamon, NULL);
 #endif
 	v4l2_ctrl_new_custom(handler, &cfg_s_stream, NULL);
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-	v4l2_ctrl_new_custom(handler, &cfg_g_csi2_irq_status, NULL);
-#endif
 
 
 	if (handler->error) {
@@ -2161,7 +2119,6 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 	struct v4l2_ctrl *ctrl;
 	int val = 0;
 	int reset_by_user = 0;
-	bool in_reset = 0;
 
 	if (!force_check && ctx->dbg_last_dump_req != 0 &&
 		ctx->dbg_last_dump_req == seq_id) {
@@ -2179,13 +2136,6 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 			ctx->dbg_timeout = val;
 	}
 
-	ctrl = v4l2_ctrl_find(sensor_sd->ctrl_handler, V4L2_CID_MTK_SENSOR_IN_RESET);
-	if (ctrl) {
-		val = v4l2_ctrl_g_ctrl(ctrl);
-		if (val > 0)
-			in_reset = true;
-	}
-
 	ret = pm_runtime_get_sync(ctx->dev);
 	if (ret < 0) {
 		dev_info(ctx->dev, "%s pm_runtime_get_sync ret %d\n", __func__, ret);
@@ -2193,25 +2143,28 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 		return ret;
 	}
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	if (ctx->streaming) {
-		if (!in_reset) {
-			ret = g_seninf_ops->_debug(sd_to_ctx(sd));
+		ret = g_seninf_ops->_debug(sd_to_ctx(sd));
 #if ESD_RESET_SUPPORT
-			if (ret != 0) {
-				reset_by_user = is_reset_by_user(sd_to_ctx(sd));
-	#ifdef OPLUS_FEATURE_CAMERA_COMMON
-				if (!reset_by_user){
-					reset_sensor(sd_to_ctx(sd));
-					ctx->esd = 1;
-				}
-	#else
-				if (!reset_by_user)
-					reset_sensor(sd_to_ctx(sd));
-	#endif
-			}
+		if (ret != 0)
+#else
+		if (0)
 #endif
-		} else
-			dev_info(ctx->dev, "%s skip dump, sensor is in resetting\n", __func__);
+			reset_sensor(sd_to_ctx(sd));
+	} else
+		dev_info(ctx->dev, "%s should not dump during stream off\n", __func__);
+	return ret;
+#else
+	if (ctx->streaming) {
+		ret = g_seninf_ops->_debug(sd_to_ctx(sd));
+#if ESD_RESET_SUPPORT
+		if (ret != 0) {
+			reset_by_user = is_reset_by_user(sd_to_ctx(sd));
+			if (!reset_by_user)
+				reset_sensor(sd_to_ctx(sd));
+		}
+#endif
 	} else
 		dev_info(ctx->dev, "%s should not dump during stream off\n", __func__);
 	pm_runtime_put_sync(ctx->dev);
@@ -2219,20 +2172,8 @@ int mtk_cam_seninf_dump(struct v4l2_subdev *sd, u32 seq_id, bool force_check)
 		 __func__, ret, seq_id, force_check, reset_by_user);
 
 	return (ret && reset_by_user);
-}
-
-#ifdef OPLUS_FEATURE_CAMERA_COMMON
-int mtk_cam_seninf_get_csi_irq_status(struct v4l2_subdev *sd, struct v4l2_ctrl *ctrl)
-{
-	struct seninf_ctx *ctx = sd_to_ctx(sd);
-
-	ctrl->val  = (g_seninf_ops->_get_csi_irq_status(sd_to_ctx(sd)) & 0x7fff) | (ctx->esd << 15);
-	ctx->esd = 0;
-    dev_info(ctx->dev,"SENINF%d_CSI2_IRQ_STATUS(0x%x)\n", ctx->seninfIdx, ctrl->val);
-
-    return 0;
-}
 #endif
+}
 
 void mtk_cam_seninf_set_secure(struct v4l2_subdev *sd, int enable, unsigned int SecInfo_addr)
 {

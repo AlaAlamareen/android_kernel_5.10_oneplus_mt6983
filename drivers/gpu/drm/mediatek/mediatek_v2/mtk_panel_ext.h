@@ -135,7 +135,6 @@ struct esd_check_item {
 	unsigned char count;
 	unsigned char para_list[RT_MAX_NUM];
 	unsigned char mask_list[RT_MAX_NUM];
-	unsigned char revert_flag;
 };
 
 enum MTK_PANEL_MODE_SWITCH_STAGE {
@@ -327,9 +326,6 @@ struct dynamic_fps_params {
 	unsigned int switch_en;
 	unsigned int vact_timing_fps;
 	unsigned int data_rate;
-	unsigned int apollo_limit_superior_us;
-	unsigned int apollo_limit_inferior_us;
-	unsigned int apollo_transfer_time_us;
 	struct dfps_switch_cmd dfps_cmd_table[MAX_DYN_CMD_NUM];
 };
 
@@ -421,7 +417,6 @@ struct mtk_panel_params {
 	struct mtk_ddic_dsi_cmd send_cmd_to_ddic;
 	unsigned int cust_esd_check;
 	unsigned int esd_check_enable;
-	unsigned int esd_te_check_gpio;
 	/* #ifdef OPLUS_FEATURE */
 	unsigned int esd_check_aod_status_again_skip;
 	/* #endif */ /* OPLUS_BUG_STABILITY */
@@ -462,7 +457,6 @@ struct mtk_panel_params {
 	unsigned int before_hbm_en_time;
 	unsigned int before_hbm_en_delay_time;
 	unsigned int before_hbm_dis_time;
-	unsigned int oplus_te_count;
 	/* #ifdef OPLUS_ADFR */
 	unsigned int oplus_mode_switch_hs;
 	unsigned int oplus_fakeframe_cfg;
@@ -485,10 +479,8 @@ struct mtk_panel_params {
 	unsigned int tp_lcd_suspend;
 	unsigned char vendor[32];
 	unsigned char manufacture[32];
-	unsigned int panel_type;
 	/* #endif */ /* OPLUS_BUG_STABILITY */
 	bool esd_check_multi;
-	bool move_esd_readdate_back;
 	bool oplus_esd_val_compare_skip;
 	unsigned int set_area_before_trigger;
 	bool oplus_need_wait_ms_time;
@@ -541,12 +533,6 @@ struct mtk_panel_params {
 	unsigned int first_prete_delay_time;
 	/*#endif*/
 	unsigned int use_free_pointer_check;
-	unsigned int panel_bpp;
-	/* increase Frame Bw to avoid lines appearing when ovl is pushed to the limit by multiple layers */
-	bool oplus_more_frame_bw;
-/* #ifdef OPLUS_FEATURE_DISPLAY */
-	unsigned int change_fps_by_vfp_send_cmd_need_delay;
-/* #endif */ /* OPLUS_FEATURE_DISPLAY */
 };
 
 struct mtk_panel_ext {
@@ -615,7 +601,6 @@ struct mtk_panel_funcs {
 	int (*send_cmd_before_dsi_read)(struct drm_panel *panel, void *dsi_drv,
                 dcs_write_gce cb, void *handle);
 	int (*sn_set)(struct drm_panel *panel);
-	void (*oplus_get_info)(struct drm_panel *panel, int read_ic);
 	//#endif
 	int (*ext_cmd_set)(void *dsi, dcs_write_gce cb, void *handle);
 	/**
@@ -689,9 +674,11 @@ struct mtk_panel_funcs {
 	/* add for mux switch control */
 	int (*set_vsync_switch)(struct drm_panel *panel, int vsync_mode);
 	//#endif
+
 #ifdef OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION
 	int (*oplus_temp_compensation_set)(void *dsi, void *gce_cb, void *handle, unsigned int setting_mode);
 #endif /* OPLUS_FEATURE_DISPLAY_TEMP_COMPENSATION */
+
 	/*#ifdef OPLUS_BUG_STABILITY*/
 	int (*oplus_set_power)(uint32_t voltage_id, uint32_t voltage_value);
 	int (*oplus_update_power_value)(uint32_t voltage_id);
@@ -702,16 +689,12 @@ struct mtk_panel_funcs {
 	int (*send_ddic_cmd_pack)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce_pack cb, void *handle);
 	int (*esd_check_precondition)(void *dsi, dcs_write_gce cb, void *handle);
-	int (*esd_check_multipage_pre)(void *dsi, dcs_write_gce cb, void *handle, int i);
-	int (*esd_check_multipage_aft)(void *dsi, dcs_write_gce cb, void *handle, int i);
 	/*#ifdef OPLUS_BUG_STABILITY*/
 	int (*lcm_osc_change)(void *dsi, dcs_write_gce cb, void *handle, bool en);
 	int (*lcm_high_pwm_set)(struct drm_panel *panel, void *dsi, dcs_write_gce_pack cb, void *handle, bool en_h_pwm);
 	int (*lcm_high_pwm_elvss)(void *dsi, dcs_write_gce_pack cb, void *handle, bool en_h_pwm);
 	int (*lcm_high_pwm_set_fps)(void *dsi, dcs_write_gce_pack cb, void *handle, int fps, bool en_h_pwm);
 	int (*lcm_high_pwm_set_plus_bl)(void *dsi, dcs_write_gce_pack cb, void *handle, unsigned int bl_lvl);
-	int (*lcm_set_hbm_max)(void *dsi, dcs_write_gce_pack cb, void *handle, unsigned int en);
-	int (*lcm_demura_set_bl)(void *dsi, dcs_write_gce_pack cb, void *handle, int bl_demura_mode);
 	void (*cabc_switch)(void *dsi_drv, dcs_write_gce cb,void *handle, unsigned int cabc_mode);
 	int (*lcm_dc_post_enter)(void *dsi_drv, dcs_write_gce cb,
 		void *handle);

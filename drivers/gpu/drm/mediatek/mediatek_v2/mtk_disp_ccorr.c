@@ -28,7 +28,6 @@
 #include "mtk_drm_trace.h"
 // #endif OPLUS_BUG_STABILITY
 #include "platform/mtk_drm_6789.h"
-#include "mtk_drm_mmp.h"
 
 #ifdef CONFIG_LEDS_MTK_MODULE
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
@@ -1023,26 +1022,14 @@ int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
 static bool is_doze_active(void)
 {
 	struct drm_crtc *crtc;
-	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_crtc_state *mtk_state;
 
 	if (!default_comp)
 		return false;
 	crtc = &default_comp->mtk_crtc->base;
-	mtk_crtc = to_mtk_crtc(crtc);
-
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	mtk_state = to_mtk_crtc_state(crtc->state);
-	if(!mtk_state){
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return false;
-	}
-
-	if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]){
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
 		return true;
-	}
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	return false;
 }
 
@@ -1166,16 +1153,11 @@ int mtk_drm_ioctl_ccorr_eventctl(struct drm_device *dev, void *data,
 	int ret = 0;
 	/* TODO: dual pipe */
 	int *enabled = data;
-	//#ifdef OPLUS_SILKY_ON_START_FRAME
-	if (!enabled) {
-		DDPPR_ERR("%s: nullptr!\n", __func__);
-		return -1;
-	}
-	if ((*enabled == 1) || g_old_pq_backlight != g_pq_backlight)
+
+	if (enabled || g_old_pq_backlight != g_pq_backlight)
 		mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
-	//#endif //OPLUS_SILKY_ON_START_FRAMEY
 
 #ifdef OPLUS_SILKY_ON_START_FRAME
 	if (flag_silky_panel) {

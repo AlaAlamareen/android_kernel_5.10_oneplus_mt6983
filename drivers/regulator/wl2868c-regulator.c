@@ -61,7 +61,6 @@ static const struct regulator_ops wl2868c_ops = {
 		      REGULATOR_LINEAR_RANGE(496000, 0x0, 0xff, 8000),	\
 		},							\
 		.n_linear_ranges = 1,					\
-		.n_voltages =	   0xff,				\
 		.vsel_reg =	   WL2868C_LDO ## _num ## VOUT,	\
 		.vsel_mask =	   0xff,				\
 		.enable_reg =	   WL2868C_ENABLE,			\
@@ -82,7 +81,6 @@ static const struct regulator_ops wl2868c_ops = {
 		      REGULATOR_LINEAR_RANGE(1504000, 0x0, 0xff, 8000),	\
 		},							\
 		.n_linear_ranges = 1,					\
-		.n_voltages =	   0xff,				\
 		.vsel_reg =	   WL2868C_LDO ## _num ## VOUT,	\
 		.vsel_mask =	   0xff,				\
 		.enable_reg =	   WL2868C_ENABLE,			\

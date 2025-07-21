@@ -262,12 +262,6 @@ struct signal_struct {
 #define SIGNAL_STOP_MASK (SIGNAL_CLD_MASK | SIGNAL_STOP_STOPPED | \
 			  SIGNAL_STOP_CONTINUED)
 
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-#define SIGNAL_HUGEPAGE_CRITICAL 0x00000080
-#define SIGNAL_HUGEPAGE_NOT_CRITICAL 0x00000100
-#define SIGNAL_CHP_SPECIAL 0x00000200
-#endif
-
 static inline void signal_set_stop_flags(struct signal_struct *sig,
 					 unsigned int flags)
 {
@@ -366,21 +360,9 @@ static inline int restart_syscall(void)
 	return -ERESTARTNOINTR;
 }
 
-static inline int task_sigpending(struct task_struct *p)
-{
-	return unlikely(test_tsk_thread_flag(p,TIF_SIGPENDING));
-}
-
 static inline int signal_pending(struct task_struct *p)
 {
-	/*
-	 * TIF_NOTIFY_SIGNAL isn't really a signal, but it requires the same
-	 * behavior in terms of ensuring that we break out of wait loops
-	 * so that notify signal callbacks can be processed.
-	 */
-	if (unlikely(test_tsk_thread_flag(p, TIF_NOTIFY_SIGNAL)))
-		return 1;
-	return task_sigpending(p);
+	return unlikely(test_tsk_thread_flag(p,TIF_SIGPENDING));
 }
 
 static inline int __fatal_signal_pending(struct task_struct *p)
@@ -390,7 +372,7 @@ static inline int __fatal_signal_pending(struct task_struct *p)
 
 static inline int fatal_signal_pending(struct task_struct *p)
 {
-	return task_sigpending(p) && __fatal_signal_pending(p);
+	return signal_pending(p) && __fatal_signal_pending(p);
 }
 
 static inline int signal_pending_state(long state, struct task_struct *p)
@@ -527,7 +509,7 @@ extern int set_user_sigmask(const sigset_t __user *umask, size_t sigsetsize);
 static inline void restore_saved_sigmask_unless(bool interrupted)
 {
 	if (interrupted)
-		WARN_ON(!signal_pending(current));
+		WARN_ON(!test_thread_flag(TIF_SIGPENDING));
 	else
 		restore_saved_sigmask();
 }

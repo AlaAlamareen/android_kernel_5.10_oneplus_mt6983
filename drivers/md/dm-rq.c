@@ -206,10 +206,6 @@ static void dm_done(struct request *clone, blk_status_t error, bool mapped)
 	int r = DM_ENDIO_DONE;
 	struct dm_rq_target_io *tio = clone->end_io_data;
 	dm_request_endio_fn rq_end_io = NULL;
-#ifdef CONFIG_DEVICE_XCOPY
-	struct para_limit *limit =
-		(struct para_limit *)clone->q->limits.android_kabi_reserved1;
-#endif
 
 	if (tio->ti) {
 		rq_end_io = tio->ti->type->rq_end_io;
@@ -228,12 +224,6 @@ static void dm_done(struct request *clone, blk_status_t error, bool mapped)
 		else if (req_op(clone) == REQ_OP_WRITE_ZEROES &&
 			 !clone->q->limits.max_write_zeroes_sectors)
 			disable_write_zeroes(tio->md);
-#ifdef CONFIG_DEVICE_XCOPY
-		else if (req_op(clone) == REQ_OP_DEVICE_COPY &&
-			 limit && !limit->max_copy_blks &&
-			 !limit->min_copy_blks && !limit->max_copy_entr)
-			disable_device_copy(tio->md);
-#endif
 	}
 
 	switch (r) {

@@ -23,9 +23,6 @@
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG)
 #include <../kernel/oplus_cpu/oplus_overload/task_overload.h>
 #endif
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_LOADBALANCE)
-#include <../kernel/oplus_cpu/sched/sched_assist/sa_balance.h>
-#endif
 
 MODULE_LICENSE("GPL");
 
@@ -592,12 +589,6 @@ void hook_scheduler_tick(void *data, struct rq *rq)
 	if (ret != UX_STATE_INHERIT && ret != UX_STATE_SCHED_ASSIST)
 		test_task_overload(rq->curr);
 #endif /* #OPLUS_FEATURE_ABNORMAL_FLAG */
-
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_LOADBALANCE)
-	if (__oplus_tick_balance(NULL, rq))
-		return;
-#endif
-
 	if (rq->curr->policy == SCHED_NORMAL)
 		check_for_migration(rq->curr);
 }
@@ -747,9 +738,6 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				&& (rt_task_fits_capacity(p, cpu))
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 				&& (fbg_rt_task_fits_capacity(p, cpu))
-#endif
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-				&& !sa_rt_skip_ux_cpu(cpu)
 #endif
 				) {
 			lowest_prio = curr->prio;

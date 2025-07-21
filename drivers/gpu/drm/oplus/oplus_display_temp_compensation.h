@@ -14,30 +14,11 @@
 #include <linux/kobject.h>
 #include <linux/iio/consumer.h>
 
-enum oplus_demura_mode {
-	OPLUS_DEMURA_DBV_MODE0 = 0,
-	OPLUS_DEMURA_DBV_MODE1 = 1,
-	OPLUS_DEMURA_DBV_MODE2 = 2,
-	OPLUS_DEMURA_DBV_MODE3 = 3,
-	OPLUS_DEMURA_DBV_MODE4 = 4,
-	OPLUS_DEMURA_DBV_MODE_MAX,
-};
-
-struct oplus_demura_setting_table {
-	bool oplus_bl_demura_dbv_support;
-	int bl_demura_mode;
-	int demura_switch_dvb1;
-	int demura_switch_dvb2;
-	int demura_switch_dvb3;
-	int demura_switch_dvb4;
-};
-
 enum oplus_temp_compensation_log_level {
-	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_NONE = 0,
-	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_ERR = 1,
-	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_WARN = 2,
-	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_INFO = 3,
-	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_DEBUG = 4,
+	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_ERR = 0,
+	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_WARN = 1,
+	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_INFO = 2,
+	OPLUS_TEMP_COMPENSATION_LOG_LEVEL_DEBUG = 3,
 };
 
 /*
@@ -45,12 +26,7 @@ enum oplus_temp_compensation_log_level {
  an error would be reported, so a new enum declaration is made here to replace oplus_debug_log
 */
 enum oplus_temp_compensation_debug_log {
-	OPLUS_TEMP_COMPENSATION_DEBUG_LOG_TEMP_COMPENSATION = BIT(6),
-};
-
-/* new enum declaration is made here to replace oplus_display_trace_enable */
-enum oplus_temp_compensation_trace_enable {
-	OPLUS_TEMP_COMPENSATION_TRACE_ENABLE = BIT(3),
+	OPLUS_TEMP_COMPENSATION_DEBUG_LOG_TEMP_COMPENSATION = BIT(5),
 };
 
 enum oplus_temp_compensation_dbv_index {
@@ -92,39 +68,18 @@ enum oplus_temp_compensation_setting_mode {
 
 /* remember to initialize params */
 struct oplus_temp_compensation_params {
-	unsigned int config;										/*
-																 bit(0):enable temp compensation function
-																 bit(1):enable temp compensation funciton but filter the sending of ddic cmds
-																 bit(2):enable temp compensation data updating
-																*/
-	unsigned int reg_repeat;									/*
-																 a value used to indicates how many times should the specific temp compensation datas be copied to the specific registers
-																 both defalut value && max value are 4
-																*/
-	unsigned char ***data;										/* the compensation data which are parsed from dtsi */
-	unsigned int *dbv_group;									/* the dbv gruop parsed from dtsi which decide how to group the compensation data by backlight */
-	int *temp_group;											/* the temp gruop parsed from dtsi which decide how to group the compensation data by temperature */
-	unsigned char dbv_group_count;								/* the count of dbv group(sizeof(dbv_group)+1) */
-	unsigned char temp_group_count;								/* the count of temp group(sizeof(temp_group)+1) */
-	unsigned char voltage_group_count;							/* the count of voltage group */
-	struct iio_channel *ntc_temp_chan;							/* a channel used to get ntc temp */
-	int ntc_temp;												/* current ntc temp value */
-	int shell_temp;												/* current shell temp value */
-	bool fake_ntc_temp;											/* indicates whether fake ntc temp is set or not */
-	bool fake_shell_temp;										/* indicates whether fake shell temp is set or not */
-	bool need_to_set_in_first_half_frame;						/* indicates whether temp compensation params should be set in first half frame or not */
+	struct iio_channel *ntc_temp_chan;
+	int ntc_temp;
+	int shell_temp;
+	bool fake_ntc_temp;
+	bool fake_shell_temp;
+	bool need_to_set_in_first_half_frame;
 };
 
 /* log level config */
 extern unsigned int oplus_temp_compensation_log_level;
 /* debug log switch */
 extern int oplus_dsi_log_type;
-/* dynamic trace enable */
-extern unsigned int oplus_display_trace_enable;
-/* trace pid */
-extern int g_commit_pid;
-/* trace function */
-extern void mtk_drm_print_trace(char *fmt, ...);
 
 /* debug log */
 #define TEMP_COMPENSATION_ERR(fmt, arg...)	\
@@ -147,33 +102,12 @@ extern void mtk_drm_print_trace(char *fmt, ...);
 
 #define TEMP_COMPENSATION_DEBUG(fmt, arg...)	\
 	do {	\
-		if ((oplus_temp_compensation_log_level >= OPLUS_TEMP_COMPENSATION_LOG_LEVEL_DEBUG)	\
+		if ((oplus_temp_compensation_log_level >= OPLUS_TEMP_COMPENSATION_LOG_LEVEL_DEBUG)   \
 				&& (oplus_dsi_log_type & OPLUS_TEMP_COMPENSATION_DEBUG_LOG_TEMP_COMPENSATION))	\
 			pr_info("[TEMP_COMPENSATION][DEBUG][%s:%d]"pr_fmt(fmt), __func__, __LINE__, ##arg);	\
 	} while (0)
 
-/* debug trace */
-#define OPLUS_TEMP_COMPENSAITON_TRACE_BEGIN(name)	\
-	do {	\
-		if (oplus_display_trace_enable & OPLUS_TEMP_COMPENSATION_TRACE_ENABLE)	\
-			mtk_drm_print_trace("B|%d|"name"\n", g_commit_pid);	\
-	} while (0)
-
-#define OPLUS_TEMP_COMPENSAITON_TRACE_END(name)	\
-	do {	\
-		if (oplus_display_trace_enable & OPLUS_TEMP_COMPENSATION_TRACE_ENABLE)	\
-			mtk_drm_print_trace("E|%d|"name"\n", g_commit_pid);	\
-	} while (0)
-
-#define OPLUS_TEMP_COMPENSAITON_TRACE_INT(name, value)	\
-	do {	\
-		if (oplus_display_trace_enable & OPLUS_TEMP_COMPENSATION_TRACE_ENABLE)	\
-			mtk_drm_print_trace("C|%d|"name"|%d\n", g_commit_pid, value);	\
-	} while (0)
-
 /* -------------------- function implementation -------------------- */
-bool oplus_temp_compensation_is_supported(void);
-int oplus_temp_compensation_init(void *device);
 int oplus_temp_compensation_register_ntc_channel(void *device);
 int oplus_temp_compensation_get_ntc_temp(void);
 int oplus_temp_compensation_data_update(void);
@@ -183,11 +117,6 @@ int oplus_temp_compensation_io_cmd_set(void *mtk_ddp_comp, void *cmdq_pkt, unsig
 int oplus_temp_compensation_temp_check(void *mtk_ddp_comp, void *cmdq_pkt);
 
 /* -------------------- node -------------------- */
-/* config */
-ssize_t oplus_temp_compensation_set_config_attr(struct kobject *obj,
-	struct kobj_attribute *attr, const char *buf, size_t count);
-ssize_t oplus_temp_compensation_get_config_attr(struct kobject *obj,
-	struct kobj_attribute *attr, char *buf);
 /* ntc temp */
 ssize_t oplus_temp_compensation_set_ntc_temp_attr(struct kobject *obj,
 	struct kobj_attribute *attr, const char *buf, size_t count);
@@ -200,3 +129,4 @@ ssize_t oplus_temp_compensation_get_shell_temp_attr(struct kobject *obj,
 	struct kobj_attribute *attr, char *buf);
 
 #endif /* _OPLUS_DISPLAY_TEMP_COMPENSATION_H_ */
+

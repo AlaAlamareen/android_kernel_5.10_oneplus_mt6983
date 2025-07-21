@@ -1003,11 +1003,6 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
 		ix = curp->p_idx;
 	}
 
-	if (unlikely(ix > EXT_MAX_INDEX(curp->p_hdr))) {
-		EXT4_ERROR_INODE(inode, "ix > EXT_MAX_INDEX!");
-		return -EFSCORRUPTED;
-	}
-
 	len = EXT_LAST_INDEX(curp->p_hdr) - ix + 1;
 	BUG_ON(len < 0);
 	if (len > 0) {
@@ -1015,6 +1010,11 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
 				"move %d indices from 0x%p to 0x%p\n",
 				logical, len, ix, ix + 1);
 		memmove(ix + 1, ix, len * sizeof(struct ext4_extent_idx));
+	}
+
+	if (unlikely(ix > EXT_MAX_INDEX(curp->p_hdr))) {
+		EXT4_ERROR_INODE(inode, "ix > EXT_MAX_INDEX!");
+		return -EFSCORRUPTED;
 	}
 
 	ix->ei_block = cpu_to_le32(logical);
@@ -4694,6 +4694,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
 		     FALLOC_FL_INSERT_RANGE))
 		return -EOPNOTSUPP;
 
+	ext4_fc_start_update(inode);
 	inode_lock(inode);
 	ret = ext4_convert_inline_data(inode);
 	inode_unlock(inode);
@@ -4763,6 +4764,7 @@ out:
 	inode_unlock(inode);
 	trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
 exit:
+	ext4_fc_stop_update(inode);
 	return ret;
 }
 
@@ -5180,7 +5182,6 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
 	 * and it is decreased till we reach start.
 	 */
 again:
-	ret = 0;
 	if (SHIFT == SHIFT_LEFT)
 		iterator = &start;
 	else
@@ -5224,21 +5225,14 @@ again:
 					ext4_ext_get_actual_len(extent);
 		} else {
 			extent = EXT_FIRST_EXTENT(path[depth].p_hdr);
-			if (le32_to_cpu(extent->ee_block) > start)
+			if (le32_to_cpu(extent->ee_block) > 0)
 				*iterator = le32_to_cpu(extent->ee_block) - 1;
-			else if (le32_to_cpu(extent->ee_block) == start)
+			else
+				/* Beginning is reached, end of the loop */
 				iterator = NULL;
-			else {
-				extent = EXT_LAST_EXTENT(path[depth].p_hdr);
-				while (le32_to_cpu(extent->ee_block) >= start)
-					extent--;
-
-				if (extent == EXT_LAST_EXTENT(path[depth].p_hdr))
-					break;
-
+			/* Update path extent in case we need to stop */
+			while (le32_to_cpu(extent->ee_block) < start)
 				extent++;
-				iterator = NULL;
-			}
 			path[depth].p_ext = extent;
 		}
 		ret = ext4_ext_shift_path_extents(path, shift, inode,
@@ -5799,15 +5793,6 @@ int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu)
 	int depth, mapped = 0, err = 0;
 	struct ext4_extent *extent;
 	ext4_lblk_t first_lblk, first_lclu, last_lclu;
-
-	/*
-	 * if data can be stored inline, the logical cluster isn't
-	 * mapped - no physical clusters have been allocated, and the
-	 * file has no extents
-	 */
-	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) ||
-	    ext4_has_inline_data(inode))
-		return 0;
 
 	/* search for the extent closest to the first block in the cluster */
 	path = ext4_find_extent(inode, EXT4_C2B(sbi, lclu), NULL, 0);

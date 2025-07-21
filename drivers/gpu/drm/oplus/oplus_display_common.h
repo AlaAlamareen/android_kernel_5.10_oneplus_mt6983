@@ -30,8 +30,4 @@ int oplus_display_panel_set_pq_trigger(void *buf);
 int oplus_display_panel_set_pwm_status(void *data);
 int oplus_display_panel_get_pwm_status(void *buf);
 int oplus_display_panel_get_pwm_status_for_90hz(void *buf);
-int oplus_display_panel_get_panel_type(void *data);
-int oplus_display_panel_get_panel_bpp(void *buf);
-int oplus_display_panel_set_hbm_max(void *data);
-int oplus_display_panel_get_hbm_max(void *data);
 #endif /*_OPLUS_DISPLAY_COMMON_H_*/
